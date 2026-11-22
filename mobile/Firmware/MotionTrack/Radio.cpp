@@ -48,8 +48,10 @@ void begin() {
     ad->setScanResponse(true);
     ad->start();
 }
-bool next(workout::Command& cmd) {return xQueueReceive(commands,&cmd,0)==pdTRUE;}
+// Both are safe to call before begin() (for example from a startup fault).
+bool next(workout::Command& cmd) {return commands && xQueueReceive(commands,&cmd,0)==pdTRUE;}
 void publish(const workout::Packet& value) {
+    if (!server || !output) return;
     if (reconnect.exchange(false) && !connected.load()) server->startAdvertising();
     if (value == last && millis()-publishedAt < 1000) return;
     last=value;

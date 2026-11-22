@@ -640,14 +640,15 @@ void applyControl(const workout::Command& c) {
 
 void setupTracker() {
   Serial.begin(115200);
-  delay(500);
+  // Battery and breadboard supplies rise more slowly than USB, and the OLED
+  // ignores commands sent before it has powered up.
+  delay(1000);
 #if !MOTIONTRACK_WEBSITE
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  radio::begin();
 #endif
   Serial.println("MotionTrack: MPU address 0x68 only");
   Serial.println("MPU SDA32/SCL33; OLED SDA21/SCL22; heart SDA25/SCL26");
-  if (!Wire.begin(OLED_SDA, OLED_SCL, 400000)) fatal("OLED I2C setup failed");
+  if (!Wire.begin(OLED_SDA, OLED_SCL, 100000)) fatal("OLED I2C setup failed");
   Wire.setTimeOut(50);
   mpuWire.setTxBuffer(mpuTxBuffer, sizeof(mpuTxBuffer));
   mpuWire.setRxBuffer(mpuRxBuffer, sizeof(mpuRxBuffer));
@@ -658,18 +659,27 @@ void setupTracker() {
   mpuWire.setTimeout_ms(50);
   mpuWire.begin();
 
+  // Retry for a few seconds in case the OLED is still powering up.
   uint8_t oledAddress = 0;
-  for (uint8_t address = 0x3C; address <= 0x3D; ++address) {
-    Wire.beginTransmission(address);
-    if (Wire.endTransmission() == 0) {
-      oledAddress = address;
-      break;
+  for (uint8_t attempt = 0; attempt < 10 && !oledAddress; ++attempt) {
+    for (uint8_t address = 0x3C; address <= 0x3D; ++address) {
+      Wire.beginTransmission(address);
+      if (Wire.endTransmission() == 0) {
+        oledAddress = address;
+        break;
+      }
     }
+    if (!oledAddress) delay(300);
   }
   if (!oledAddress || !display.begin(SSD1306_SWITCHCAPVCC, oledAddress, false, false)) fatal("OLED not found");
   displayReady = true;
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(true);
+#if !MOTIONTRACK_WEBSITE
+  // Start Bluetooth only after the OLED is running: its start-up current
+  // spike can pull a battery supply low enough to stop the OLED starting.
+  radio::begin();
+#endif
   beginMpu();
   calibrateMotion();
 
