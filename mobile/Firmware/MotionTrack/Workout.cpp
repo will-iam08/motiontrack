@@ -85,13 +85,17 @@ bool endedRecently = false;      // show "Done"/"Session ended" for a moment aft
 bool endedAfterDone = false;
 unsigned long endedAt = 0;
 
-void fatal(const char *message) {
+// `detail` is an optional second line (at most 21 characters) with the value
+// that failed, so the screen shows why the tracker stopped.
+void fatal(const char *message, const char *detail = nullptr) {
   Serial.println(message);
+  if (detail) Serial.println(detail);
   if (displayReady) {
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0, 0);
     display.println(message);
+    if (detail) display.println(detail);
     display.println("Check wiring/power");
     display.display();
   }
@@ -185,7 +189,11 @@ void calibrateMotion() {
     float accel[3], gyro[3];
     if (!readMotion(accel, gyro)) fatal("MPU read failed");
     const float gravity = sqrtf(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
-    if (gravity < 0.75f || gravity > 1.25f) fatal("Hold still, reset");
+    if (gravity < 0.75f || gravity > 1.25f) {
+      char detail[24];
+      snprintf(detail, sizeof(detail), "Accel %.2fg, need ~1", gravity);
+      fatal("Hold still, reset", detail);
+    }
     for (uint8_t axis = 0; axis < 3; ++axis) {
       sum[axis] += gyro[axis];
       sumSquares[axis] += gyro[axis] * gyro[axis];
@@ -195,7 +203,15 @@ void calibrateMotion() {
   for (uint8_t axis = 0; axis < 3; ++axis) {
     gyroBias[axis] = sum[axis] / samples;
     const float variance = sumSquares[axis] / samples - gyroBias[axis] * gyroBias[axis];
-    if (fabsf(gyroBias[axis]) > 10.0f || variance > 4.0f) fatal("Hold still, reset");
+    if (fabsf(gyroBias[axis]) > 10.0f || variance > 4.0f) {
+      char detail[24];
+      if (fabsf(gyroBias[axis]) > 10.0f) {
+        snprintf(detail, sizeof(detail), "Gyro %c drift %.1f>10", "XYZ"[axis], fabsf(gyroBias[axis]));
+      } else {
+        snprintf(detail, sizeof(detail), "Gyro %c noise %.1f>4", "XYZ"[axis], variance);
+      }
+      fatal("Hold still, reset", detail);
+    }
   }
   motionOK = true;
 }
