@@ -11,6 +11,9 @@ const int OLED_SCL = 22;
 const int HEART_SDA = 25;
 const int HEART_SCL = 26;
 const uint8_t HEART_ADDRESS = 0x57;
+// Set to false when the MAX30102 is missing or damaged. The tracker then never
+// starts the pulse sensor and skips both heart-rate checks on its own.
+const bool HEART_SENSOR_INSTALLED = false;
 const int MPU_SDA = 32;
 const int MPU_SCL = 33;
 const uint8_t MPU_ADDRESS = 0x68;

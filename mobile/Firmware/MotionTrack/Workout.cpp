@@ -251,6 +251,7 @@ bool beginHeart() {
 
 // v6 heart polling: re-probe when offline, detect a disconnected sensor.
 void serviceHeart() {
+  if (!HEART_SENSOR_INSTALLED) return;
   if (!heartReady && millis() - lastHeartProbe >= HEART_RETRY_MS) {
     lastHeartProbe = millis();
     heartReady = beginHeart();
@@ -672,7 +673,11 @@ void setupTracker() {
   beginMpu();
   calibrateMotion();
 
-  heartReady = beginHeart();
+  if (HEART_SENSOR_INSTALLED) {
+    heartReady = beginHeart();
+  } else {
+    Serial.println("Pulse sensor turned off in config.h: heart-rate checks are skipped.");
+  }
   lastHeartProbe = millis();
   lastMotion = millis();
 
@@ -699,6 +704,12 @@ void updateTracker() {
   }
   while (radio::next(c)) applyControl(c);
   if (!session.timing || flow.phase()!=Phase::Counting) serviceHeart();
+  // Without a pulse sensor, skip each heart-rate check as soon as it starts,
+  // exactly as if the patient had tapped "Skip heart-rate check".
+  if (!HEART_SENSOR_INSTALLED && session.timing &&
+      (flow.phase() == Phase::BeforeBpm || flow.phase() == Phase::AfterBpm)) {
+    applyControl({3, 0, 0, uint8_t(session.stage(flow))});
+  }
   if (session.timing) {
 #endif
 
