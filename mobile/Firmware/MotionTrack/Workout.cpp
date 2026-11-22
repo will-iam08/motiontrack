@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_system.h>
 // MotionTrack: phone-controlled BLE mode or the original website workflow.
 // Hardware setup (OLED, MPU6050 on software I2C, MAX30102) follows the v6 exercise monitor.
 // loop() never touches the network: DeviceLink runs Wi-Fi/HTTP in its own task on core 0.
@@ -675,6 +676,23 @@ void setupTracker() {
   displayReady = true;
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(true);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  if (esp_reset_reason() == ESP_RST_BROWNOUT) {
+    // The last start ran out of power (usually when Bluetooth switched on).
+    Serial.println("Restarted after a brownout: the power supply sagged.");
+    display.println("Power too weak:");
+    display.println("board restarted.");
+    display.println("Use a USB power bank");
+    display.println("or a fresh battery.");
+    display.display();
+    delay(3000);
+    display.clearDisplay();
+    display.setCursor(0, 0);
+  }
+  display.println("Starting...");
+  display.display();
 #if !MOTIONTRACK_WEBSITE
   // Start Bluetooth only after the OLED is running: its start-up current
   // spike can pull a battery supply low enough to stop the OLED starting.
