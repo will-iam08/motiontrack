@@ -4,8 +4,20 @@
 #include <stdint.h>
 
 // shortcut: learns direction from the first swing. Reselect the exercise after remounting.
+//
+// Tuned to be forgiving for older patients and people with limited mobility:
+// slow, small or slightly shaky reps still count, as long as the arm really
+// goes up and comes back down.
 class TiltRepCounter {
  public:
+  static constexpr float kStartSpeed = 10.0f;     // deg/s that starts a lift (slow lifts count)
+  static constexpr float kReverseSpeed = 10.0f;   // deg/s downward that ends the lift
+  static constexpr float kAxisLearnSpeed = 10.0f; // deg/s needed to learn the swing axis
+  static constexpr float kDeadband = 5.0f;         // deg/s treated as holding still
+  static constexpr float kMinSwing = 10.0f;       // degrees each way, from the gyro
+  static constexpr float kTremorSpeed = 45.0f;    // upward jerks below this while lowering are ignored
+  static constexpr uint32_t kMaxRepMs = 15000;    // a single rep may take up to 15 s
+
   TiltRepCounter(float minimumTilt, float returnTilt) : minimumTilt_(minimumTilt), returnTilt_(returnTilt) {}
 
   bool update(float gx, float gy, float gz, const float accel[3], uint32_t nowMs) {
@@ -35,21 +47,21 @@ class TiltRepCounter {
       for (int i = 1; i < 3; ++i) {
         if (std::fabs(gyro[i]) > std::fabs(gyro[strongest])) strongest = i;
       }
-      if (!tiltUsable || std::fabs(gyro[strongest]) < 30.0f) return false;
+      if (!tiltUsable || std::fabs(gyro[strongest]) < kAxisLearnSpeed) return false;
       axis_ = strongest;
       sign_ = gyro[axis_] > 0.0f ? 1.0f : -1.0f;
     }
     float speed = gyro[axis_] * sign_;
-    if (std::fabs(speed) < 10.0f) speed = 0.0f;
+    if (std::fabs(speed) < kDeadband) speed = 0.0f;
     if (phase_ == Idle) {
-      if (tiltUsable && speed >= 30.0f) {
+      if (tiltUsable && speed >= kStartSpeed) {
         for (int i = 0; i < 3; ++i) startTilt_[i] = tilt_[i];
         phase_ = Rising;
         cycleStartMs_ = phaseStartMs_ = nowMs;
       }
       return false;
     }
-    if (nowMs - cycleStartMs_ > 8000) {
+    if (nowMs - cycleStartMs_ > kMaxRepMs) {
       discardMovement();
       return false;
     }
@@ -57,8 +69,8 @@ class TiltRepCounter {
     const float tiltDelta = tiltUsable ? angleFromStart() : -1.0f;
     if (phase_ == Rising) {
       if (tiltDelta >= minimumTilt_) reachedTilt_ = true;
-      if (speed <= -30.0f) {
-        const bool liftQualified = upDegrees_ >= 15.0f && nowMs - phaseStartMs_ >= 100;
+      if (speed <= -kReverseSpeed) {
+        const bool liftQualified = upDegrees_ >= kMinSwing && nowMs - phaseStartMs_ >= 100;
         shallowAttempt_ = liftQualified && !reachedTilt_ && tiltDelta >= 0.0f;
         if (!liftQualified || !reachedTilt_) {
           discardMovement();
@@ -72,14 +84,14 @@ class TiltRepCounter {
       }
       return false;
     }
-    if (speed >= 30.0f) {
+    if (speed >= kTremorSpeed) {
       discardMovement();
       return false;
     }
     downDegrees_ -= degrees;
     if (downDegrees_ < 0.0f) downDegrees_ = 0.0f;
     // The return must qualify while moving, even if the tilt estimate settles later.
-    if (speed < 0.0f && downDegrees_ >= 15.0f && nowMs - phaseStartMs_ >= 100 &&
+    if (speed < 0.0f && downDegrees_ >= kMinSwing && nowMs - phaseStartMs_ >= 100 &&
         nowMs - cycleStartMs_ >= 500) {
       returnQualified_ = true;
     }

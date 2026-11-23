@@ -417,7 +417,7 @@ private struct WorkoutPanel: View {
 
             if let r = reading, r.stage == .counting {
                 if r.flags & 1 != 0 { Text("Motion sensor disconnected").foregroundStyle(.orange) }
-                else if r.flags & 4 != 0 { Text("Complete the full movement to count a rep.") }
+                else if r.flags & 4 != 0 { Text("Almost there. Lift a little higher to count the rep.") }
             }
             let layout = textSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
             layout {

@@ -452,7 +452,7 @@ void runMotion(unsigned long now) {
   } else if (counter.shallowAttempt()) {
     lastShallowAttempt = now;
     showShallowWarning = true;
-    Serial.printf("%s: Fix your form for better results.\n", exercise->name);
+    Serial.printf("%s: almost. Lift a bit higher to count the rep.\n", exercise->name);
   }
 }
 
@@ -491,14 +491,10 @@ void centered(const char *text, uint8_t size, int16_t y) {
 }
 
 void drawFixYourForm() {
-  display.setTextSize(2);
-  display.setCursor(16, 4);
-  display.print("FIX YOUR");
-  display.setCursor(40, 22);
-  display.print("FORM");
-  display.setTextSize(1);
-  display.setCursor(10, 50);
-  display.print("FOR BETTER RESULTS");
+  // Gentle wording: the rep was close, it just needs a little more range.
+  centered("LIFT A", 2, 4);
+  centered("BIT HIGHER", 2, 22);
+  centered("to count the rep", 1, 50);
 }
 
 void drawIdle() {
