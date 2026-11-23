@@ -82,6 +82,7 @@ restingComplete.afterBPM = 102
 precondition(recorder.observe(reading: restingComplete).finished == nil)
 
 recorder.markWorkoutStarted(at: Date(timeIntervalSince1970: 1000))
+precondition(recorder.observe(reading: restingComplete).finished == nil)
 var step1 = Reading()
 step1.stage = .before
 step1.movement = .shoulderPress
@@ -161,3 +162,175 @@ semaphore.wait()
 let diskCheck = UploadQueueEngine(store: FileUploadQueueStore(fileURL: queueFile))
 precondition(diskCheck.pendingCount() == 0)
 print("All Motion Log sync, mapping, queue and recorder tests passed.")
+
+// Synthetic optical samples check estimator behavior, not clinical accuracy.
+func pulseTrace(_ bpm: Double?, _ hz: Double, _ offset: Double = 0) -> PulseSignal {
+    var signal = PulseSignal()
+    for i in 0...Int(25 * hz) {
+        let t = Double(i) / hz
+        let value = bpm.map { 2 * sin(2 * .pi * $0 * t / 60 + offset) } ?? 0
+        signal.add(time: t, red: 210, green: 75 + value, blue: 45)
+        if t < 25 { precondition(signal.estimate == nil) }
+    }
+    return signal
+}
+for hz in [24.0, 30.0, 60.0] {
+    for bpm in [54.0, 72.0, 115.0, 150.0] {
+        let value = pulseTrace(bpm, hz).estimate
+        precondition(value.map { abs(Double($0) - bpm) <= 5 } == true, "Unexpected estimate for \(bpm) at \(hz) Hz: \(String(describing: value))")
+    }
+}
+precondition(pulseTrace(nil, 30).estimate == nil)
+var interrupted = pulseTrace(72, 30)
+interrupted.add(time: 26, red: 90, green: 90, blue: 90)
+precondition(!interrupted.covered && interrupted.estimate == nil && interrupted.elapsed == 0)
+var uneven = PulseSignal()
+var phase = 0.0
+for i in 0...750 {
+    let t = Double(i) / 30
+    phase += 2 * .pi * (i / 35 % 2 == 0 ? 0.8 : 2.5) / 30
+    uneven.add(time: t, red: 200, green: 75 + 3 * sin(phase), blue: 42)
+}
+precondition(uneven.estimate == nil)
+print("Camera pulse signal checks passed.")
+
+// A weak green channel must not hide a clear pulse in unsaturated red.
+// A window that was unusable at the old 25s deadline may still recover.
+var latePulse = PulseSignal()
+for i in 0...1200 {
+    let t = Double(i) / 30
+    let red = 170 + (t > 25 ? 2 * sin(2 * .pi * 1.2 * t) : 0)
+    latePulse.add(time: t, red: red, green: 50, blue: 35)
+    if t <= 25 { precondition(latePulse.estimate == nil) }
+}
+precondition(latePulse.estimate == 72)
+var conflicting = PulseSignal()
+for i in 0...900 {
+    let t = Double(i) / 30
+    conflicting.add(time: t, red: 185 + 2 * sin(2 * .pi * 1.2 * t),
+                    green: 60 + 2 * sin(2 * .pi * 1.8 * t), blue: 25)
+    precondition(conflicting.estimate == nil)
+}
+conflicting.add(time: 31, red: 12, green: 4, blue: 3)
+precondition(!conflicting.covered && conflicting.quality.contains("Too dark"))
+print("Extended measurement, red channel recovery and conflicting-channel rejection passed.")
+
+// A screen-lit fingertip can be only slightly warmer than neutral. Exercise the
+// actual front-camera path, including exposure changes and occasional patchy frames.
+var frontPulse = PulseSignal()
+var flicker = PulseSignal()
+var uncovered = PulseSignal()
+var noPulse = PulseSignal()
+for i in 0...840 {
+    let t = Double(i) / 30
+    let beat = sin(2 * .pi * 1.4 * t)
+    let strength = 0.9 + 0.35 * sin(2 * .pi * 0.09 * t)
+    frontPulse.add(time: t, red: 119 + beat * strength * 0.55,
+                   green: 105 + beat * strength, blue: 98,
+                   screenLit: true, evenCoverage: i % 111 != 60)
+    if t < PulseSignal.duration { precondition(frontPulse.estimate == nil) }
+    let light = 1 + 0.015 * beat
+    flicker.add(time: t, red: 119 * light, green: 105 * light, blue: 98 * light,
+                screenLit: true, evenCoverage: true)
+    uncovered.add(time: t, red: 119, green: 105 + beat, blue: 98,
+                  screenLit: true, evenCoverage: false)
+    noPulse.add(time: t, red: 119, green: 105, blue: 98,
+                screenLit: true, evenCoverage: true)
+    precondition(flicker.estimate == nil && uncovered.estimate == nil && noPulse.estimate == nil)
+}
+precondition(frontPulse.estimate.map { abs($0 - 84) <= 2 } == true)
+for i in 841...850 {
+    frontPulse.add(time: Double(i) / 30, red: 119, green: 105, blue: 98,
+                   screenLit: true, evenCoverage: false)
+    precondition(frontPulse.estimate == nil)
+}
+precondition(!frontPulse.covered && frontPulse.elapsed == 0)
+frontPulse.add(time: 29, red: 119, green: 105, blue: 98, screenLit: true, evenCoverage: true)
+precondition(frontPulse.covered && frontPulse.elapsed == 0 && frontPulse.estimate == nil)
+print("Front camera checks passed for a weak pulse, missing contact, flat signal and brightness flicker.")
+
+// Reproduce a covered front lens whose beat is weaker than the frame-to-frame noise.
+// A repeatable noise sequence keeps the same waveform across runs and build machines.
+struct OpticalTestNoise {
+    var state: UInt64 = 47
+    mutating func next() -> Double {
+        state = state &* 6364136223846793005 &+ 1442695040888963407
+        return 2 * Double(state >> 32) / Double(UInt32.max) - 1
+    }
+}
+
+func firstFrontEstimate(_ colors: (Double) -> (red: Double, green: Double, blue: Double)) -> Int? {
+    var signal = PulseSignal()
+    for i in 0...1050 {
+        let t = Double(i) / 30 + 0.002 * sin(Double(i))
+        let color = colors(t)
+        signal.add(time: t, red: color.red, green: color.green, blue: color.blue,
+                   screenLit: true, evenCoverage: true)
+        if let estimate = signal.estimate {
+            precondition(t >= PulseSignal.duration)
+            return estimate
+        }
+    }
+    return nil
+}
+
+var sensorNoise = OpticalTestNoise()
+let weakNoisyRate = firstFrontEstimate { t in
+    let beat = 0.4 * sin(2 * .pi * 78 / 60 * t)
+    return (118 + 0.55 * beat + sensorNoise.next(),
+            102 + beat + sensorNoise.next(),
+            92 + 0.25 * sensorNoise.next())
+}
+precondition(weakNoisyRate.map { abs($0 - 78) <= 3 } == true,
+             "Noisy front camera trace, expected 78 BPM, got \(String(describing: weakNoisyRate))")
+
+var wanderingNoise = OpticalTestNoise()
+var drift = 0.0
+let noiseOnly = firstFrontEstimate { _ in
+    drift = 0.88 * drift + wanderingNoise.next()
+    return (118 + drift, 102 + 0.8 * drift + wanderingNoise.next(), 92 + wanderingNoise.next())
+}
+precondition(noiseOnly == nil, "Reported a pulse from coloured noise")
+
+let incompatibleRates = firstFrontEstimate { t in
+    (118 + sin(2 * .pi * 1.2 * t), 102 + sin(2 * .pi * 1.8 * t), 92)
+}
+precondition(incompatibleRates == nil, "Accepted unrelated red and green rhythms")
+
+let rapidOpticalFlicker = firstFrontEstimate { t in
+    // At 12 samples/s, 10.6 Hz could be mistaken for a 1.4 Hz pulse.
+    let flicker = sin(2 * .pi * 10.6 * t)
+    return (119 + 1.3 * flicker, 105 + 2 * flicker, 98)
+}
+precondition(rapidOpticalFlicker == nil, "High-frequency flicker aliased to a heart rate")
+print("Noisy front-camera recovery and interference checks passed.")
+
+var reacquired = PulseSignal()
+reacquired.add(time: 0, red: 120, green: 105, blue: 98, screenLit: true, evenCoverage: true)
+reacquired.add(time: 0.03, red: 120, green: 105, blue: 98, screenLit: true, evenCoverage: false)
+precondition(!reacquired.covered && reacquired.issue == .seekingContact)
+reacquired.add(time: 0.06, red: 120, green: 105, blue: 98, screenLit: true, evenCoverage: true)
+precondition(reacquired.covered && reacquired.elapsed == 0.06 && reacquired.issue == .collecting)
+precondition(reacquired.quality.contains("Finger detected") && reacquired.estimate == nil)
+
+// Recover a pulse despite slow, channel-dependent exposure drift. Also test a
+// common light source with the same drift and no pulse.
+for bpm in [66.0, 108.0] {
+    var noise = OpticalTestNoise()
+    let rate = firstFrontEstimate { t in
+        let baseline = 4 * sin(2 * .pi * 0.16 * t)
+        let beat = 0.50 * sin(2 * .pi * bpm / 60 * t)
+        let r = 124 + 0.7 * baseline + 0.55 * beat + 0.65 * noise.next()
+        let g = 103 - baseline + beat + 0.65 * noise.next()
+        let b = 94 + 0.3 * baseline + 0.2 * noise.next()
+        return (r, g, b)
+    }
+    precondition(rate.map { abs(Double($0) - bpm) <= 3 } == true)
+}
+let driftingLight = firstFrontEstimate { t in
+    let common = 1 + 0.015 * sin(2 * .pi * 1.4 * t)
+    let baseline = sin(2 * .pi * 0.14 * t)
+    return ((120 + baseline) * common, (103 - 0.65 * baseline) * common, (92 + 0.3 * baseline) * common)
+}
+precondition(driftingLight == nil, "Shared lighting with a drifting baseline looked like a pulse")
+print("Front-camera reacquisition, pulse recovery with slow drift, and shared-light rejection passed.")

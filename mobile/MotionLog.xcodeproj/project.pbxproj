@@ -11,6 +11,9 @@
 		00000000000000000000000A /* Tracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000009 /* Tracker.swift */; };
 		000000000000000000000013 /* SyncCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000012 /* SyncCore.swift */; };
 		000000000000000000000015 /* CloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000014 /* CloudSync.swift */; };
+		000000000000000000000033 /* PulseCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000032 /* PulseCamera.swift */; };
+		000000000000000000000031 /* PulseSignal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000030 /* PulseSignal.swift */; };
+		000000000000000000000035 /* PulseAttempt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000034 /* PulseAttempt.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +22,9 @@
 		00000000000000000000000C /* MotionLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MotionLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000012 /* SyncCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCore.swift; sourceTree = "<group>"; };
 		000000000000000000000014 /* CloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSync.swift; sourceTree = "<group>"; };
+		000000000000000000000032 /* PulseCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseCamera.swift; sourceTree = "<group>"; };
+		000000000000000000000030 /* PulseSignal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseSignal.swift; sourceTree = "<group>"; };
+		000000000000000000000034 /* PulseAttempt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseAttempt.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -29,6 +35,9 @@
 				000000000000000000000009 /* Tracker.swift */,
 				000000000000000000000012 /* SyncCore.swift */,
 				000000000000000000000014 /* CloudSync.swift */,
+				000000000000000000000032 /* PulseCamera.swift */,
+				000000000000000000000030 /* PulseSignal.swift */,
+				000000000000000000000034 /* PulseAttempt.swift */,
 			);
 			path = MotionLog;
 			sourceTree = "<group>";
@@ -104,6 +113,9 @@
 				00000000000000000000000A /* Tracker.swift in Sources */,
 				000000000000000000000013 /* SyncCore.swift in Sources */,
 				000000000000000000000015 /* CloudSync.swift in Sources */,
+				000000000000000000000033 /* PulseCamera.swift in Sources */,
+				000000000000000000000031 /* PulseSignal.swift in Sources */,
+				000000000000000000000035 /* PulseAttempt.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -201,6 +213,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Estimate your pulse from your fingertip before and after exercise.";
 				INFOPLIST_KEY_CFBundleDisplayName = "Motion Log";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your exercise tracker to display repetitions and workout duration.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -222,6 +235,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Estimate your pulse from your fingertip before and after exercise.";
 				INFOPLIST_KEY_CFBundleDisplayName = "Motion Log";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your exercise tracker to display repetitions and workout duration.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

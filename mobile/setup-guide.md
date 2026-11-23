@@ -30,6 +30,8 @@ Uploading replaces the program on the board. Keep a copy of its source if you ne
 4. Rest a fingertip steadily on the MAX30102. A valid reading moves the device into rep counting. You can also tap **Skip heart-rate check**. Reaching the rep target starts the second heart-rate check, which you can take or skip. The app displays available before- and after-workout readings separately in beats per minute. Elapsed time includes both checks.
 5. Tap **End workout** to finish early. If the phone disconnects, the board continues the workout. Scan and reconnect to retrieve its current state. The optional button can also start or end a workout. Its initial setting is 10 biceps curls. Later presses reuse the most recently started exercise and target. Powering down the board clears the current session.
 
+For pulse checks with the phone, enable **Use iPhone camera for pulse** in **My tracker**. On the iPhone 17 Pro Max, lightly cover the selfie lens at the top of the screen. You can practice with **Check pulse with iPhone camera** while the tracker is disconnected. See the [camera measurement instructions](README.md#iphone-camera-pulse).
+
 If the app displays **Hardware setup required**, read the OLED or open the 115200-baud serial monitor for details. Correct the wiring; the board restarts itself after 5 seconds. If calibration fails because the sensor moved, set it down flat and it tries again on its own. You can skip the heart-rate check when the pulse sensor is offline. **My tracker** displays device data. **Demo** displays simulated readings.
 
 ## Bluetooth interface and website mode

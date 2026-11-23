@@ -65,7 +65,13 @@ final class CloudSync: ObservableObject {
     @Published private(set) var sessionExpired = false
     @Published private(set) var lastError: String?
 
-    private let queue = UploadQueueEngine(store: FileUploadQueueStore())
+    @Published private(set) var pendingCameraSet: WorkoutSetPayload?
+    @Published private(set) var lastCameraAfter: Int?
+    @Published private(set) var cameraBefore: Int?
+    private let draftKey = "motionlog.camera.finishedSet"
+    private var cameraSetID: String?
+    private let queue: UploadQueueEngine
+    private let defaults: UserDefaults
     private let recorder = SetRecorder()
     private let urlSession: URLSession
     private var retryTask: Task<Void, Never>?
@@ -73,9 +79,13 @@ final class CloudSync: ObservableObject {
     private var lastLiveSentAt = Date.distantPast
     private var liveBlockedUntil = Date.distantPast
 
-    init(urlSession: URLSession = .shared) {
+    init(urlSession: URLSession = .shared,
+         queue: UploadQueueEngine = UploadQueueEngine(store: FileUploadQueueStore()),
+         defaults: UserDefaults = .standard, loadedSession: AuthSession? = KeychainSessionStore.load()) {
         self.urlSession = urlSession
-        let loaded = KeychainSessionStore.load()
+        self.queue = queue
+        self.defaults = defaults
+        let loaded = loadedSession
         if let loaded, !loaded.isExpired() {
             self.session = loaded
         } else if let loaded {
@@ -83,6 +93,9 @@ final class CloudSync: ObservableObject {
             self.sessionExpired = true
         }
         self.pendingCount = queue.pendingCount()
+        if let data = defaults.data(forKey: draftKey) {
+            pendingCameraSet = try? JSONDecoder().decode(WorkoutSetPayload.self, from: data)
+        }
         startRetryLoop()
         if session != nil && !sessionExpired {
             Task { [weak self] in
@@ -172,16 +185,23 @@ final class CloudSync: ObservableObject {
         lastError = nil
     }
 
-    func markWorkoutStarted() {
+    func markWorkoutStarted(cameraMode: Bool = false, before: Int? = nil) {
         recorder.markWorkoutStarted()
+        cameraSetID = cameraMode ? recorder.active?.clientId : nil
+        cameraBefore = before
+        lastCameraAfter = nil
         lastLivePayload = nil
     }
 
     func markSkipTapped(stage: WorkoutStage) {
+        if stage == .before, cameraSetID != nil, cameraBefore != nil { return }
         recorder.markSkipTapped(for: stage)
     }
 
     func resetTracking() {
+        cameraSetID = nil
+        cameraBefore = nil
+        lastCameraAfter = nil
         recorder.reset()
         lastLivePayload = nil
     }
@@ -201,7 +221,10 @@ final class CloudSync: ObservableObject {
     }
 
     func handleReading(_ reading: Reading?) {
-        guard let reading else { return }
+        guard var reading else { return }
+        if cameraSetID != nil && cameraSetID == recorder.active?.clientId, let cameraBefore {
+            reading.beforeBPM = cameraBefore
+        }
         let (finished, live) = recorder.observe(reading: reading)
         if let live {
             Task { [weak self] in
@@ -210,6 +233,15 @@ final class CloudSync: ObservableObject {
         }
         if let finished {
             lastLivePayload = nil
+            if cameraSetID == finished.clientId {
+                cameraSetID = nil
+                if finished.afterBpm == nil {
+                    if pendingCameraSet != nil { finishCameraSet(after: nil) }
+                    defaults.set(try? JSONEncoder().encode(finished), forKey: draftKey)
+                    pendingCameraSet = finished
+                    return
+                }
+            }
             if queue.enqueue(finished) {
                 pendingCount = queue.pendingCount()
             }
@@ -217,6 +249,18 @@ final class CloudSync: ObservableObject {
                 await self?.flushNow()
             }
         }
+    }
+
+    func finishCameraSet(after: Int?) {
+        guard var set = pendingCameraSet else { return }
+        set.afterBpm = after
+        set.afterSkipped = after == nil
+        queue.enqueue(set)
+        lastCameraAfter = after
+        pendingCount = queue.pendingCount()
+        pendingCameraSet = nil
+        defaults.removeObject(forKey: draftKey)
+        Task { await flushNow() }
     }
 
     func refreshCarePlan() async {

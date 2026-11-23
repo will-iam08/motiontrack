@@ -10,6 +10,8 @@ accounts and assigns patients to doctors.
 An exercise is **Complete** only when every rep was counted and both heart-rate readings exist; otherwise it is
 **Incomplete**. Retried uploads from the phone are idempotent (`client_id`) and never counted twice.
 
+Motion Log can also measure fingertip pulse with the iPhone camera. On iPhone 17 Pro and Pro Max it uses the front camera and screen light. Accepted before- and after-workout readings sync with the set. [iPhone camera pulse instructions](mobile/README.md#iphone-camera-pulse)
+
 The website says "patient", "doctor" and "admin"; the API, CLI and database call those roles `participant`, `staff`
 and `admin`.
 

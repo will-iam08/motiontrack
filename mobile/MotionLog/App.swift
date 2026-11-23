@@ -42,6 +42,11 @@ private func demoReading(seconds: Int, phase: Reading.Phase) -> Reading {
     return value
 }
 
+private enum CameraCheck: String, Identifiable {
+    case before, after, standalone
+    var id: String { rawValue }
+}
+
 struct Dashboard: View {
     @StateObject private var tracker = Tracker()
     @StateObject private var cloudSync = CloudSync()
@@ -52,11 +57,26 @@ struct Dashboard: View {
     @State private var finalDemo: Reading?
     @State private var showingAccount = false
 
+    @State private var cameraCheck: CameraCheck?
+    @AppStorage("motionlog.useCameraPulse") private var useCamera = true
+    @State private var standaloneBPM: Int?
+    @State private var measuringSetID: String?
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     syncCard
+                    if let pending = cloudSync.pendingCameraSet {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("After-workout pulse").font(.headline)
+                            Text("\(pending.repetitions) of \(pending.targetReps) reps saved on this iPhone.")
+                            if let ended = AppISO8601.parse(pending.endedAt), Date().timeIntervalSince(ended) < 180 {
+                                Button("Measure after workout") { beginAfterCheck(pending) }
+                            }
+                            Button("Skip and sync set") { cloudSync.finishCameraSet(after: nil) }
+                        }.padding()
+                    }
 
                     Picker("Data source", selection: Binding(get: { demo }, set: selectSource)) {
                         Text("Demo").tag(true)
@@ -68,7 +88,7 @@ struct Dashboard: View {
                             WorkoutPanel(reading: demoReading(seconds: elapsed(since: started, at: tick.date), phase: .active))
                         }
                     } else {
-                        WorkoutPanel(reading: demo ? finalDemo ?? Reading() : tracker.reading)
+                        WorkoutPanel(reading: demo ? finalDemo ?? Reading() : displayReading)
                     }
                     if demo {
                         Text("Demo cycles through a biceps curl, shoulder press and back row using simulated readings.")
@@ -88,6 +108,10 @@ struct Dashboard: View {
                             carePlanCard(plan)
                         }
                         connection
+                        if !tracker.connected || tracker.reading?.stage?.canStart == true {
+                            Button("Check pulse with iPhone camera") { cameraCheck = .standalone }
+                            if let standaloneBPM { Text("Last camera estimate: \(standaloneBPM) BPM") }
+                        }
                     }
                 }.padding(.horizontal, 20).padding(.vertical, 12)
             }
@@ -95,6 +119,16 @@ struct Dashboard: View {
             .navigationTitle("Motion Log")
             .sheet(isPresented: $showingAccount) {
                 AccountSheet(cloudSync: cloudSync)
+            }
+            .fullScreenCover(item: $cameraCheck) { check in
+                CameraPulseView(title: check == .before ? "Before workout" : check == .after ? "After workout" : "Camera pulse",
+                                useTitle: check == .before ? "Use BPM and start" : check == .after ? "Save BPM and sync" : "Done",
+                                accept: { resolveCamera(check, bpm: $0) },
+                                skip: { resolveCamera(check, bpm: nil) },
+                                skipTitle: check == .before ? "Skip pulse and start" : check == .after ? "Skip and sync set" : "Close")
+            }
+            .onChange(of: cloudSync.pendingCameraSet?.clientId) { id in
+                if id != nil, cameraCheck == nil, !showingAccount, let draft = cloudSync.pendingCameraSet { beginAfterCheck(draft) }
             }
             .onReceive(tracker.$reading) { reading in
                 if !demo {
@@ -107,6 +141,36 @@ struct Dashboard: View {
             .onChange(of: exerciseCode) { nextCode in
                 applyPrescribedTarget(from: cloudSync.carePlan, for: nextCode)
             }
+        }
+    }
+
+    private var displayReading: Reading? {
+        guard var reading = tracker.reading else { return nil }
+        if reading.stage != .idle {
+            reading.beforeBPM = reading.beforeBPM ?? cloudSync.cameraBefore
+            if reading.stage?.canStart == true { reading.afterBPM = reading.afterBPM ?? cloudSync.lastCameraAfter }
+        }
+        return reading
+    }
+
+    private func beginAfterCheck(_ draft: WorkoutSetPayload) {
+        guard let ended = AppISO8601.parse(draft.endedAt), Date().timeIntervalSince(ended) < 180 else { return }
+        measuringSetID = draft.clientId
+        cameraCheck = .after
+    }
+
+    private func resolveCamera(_ check: CameraCheck, bpm: Int?) {
+        cameraCheck = nil
+        switch check {
+        case .standalone: standaloneBPM = bpm
+        case .after:
+            guard let id = measuringSetID, cloudSync.pendingCameraSet?.clientId == id else { return }
+            measuringSetID = nil
+            cloudSync.finishCameraSet(after: bpm)
+        case .before:
+            guard !demo, tracker.connected, tracker.hasControls, tracker.reading?.stage?.canStart == true else { return }
+            cloudSync.markWorkoutStarted(cameraMode: true, before: bpm)
+            tracker.send(1, movement: exerciseCode, target: UInt8(target))
         }
     }
 
@@ -230,10 +294,14 @@ struct Dashboard: View {
                             Text("Back row").tag(UInt8(4))
                         }.pickerStyle(.menu)
                         Stepper("Target: \(target) reps", value: $target, in: 1...50)
+                        Toggle("Use iPhone camera for pulse", isOn: $useCamera)
                         action("Start workout", icon: "play.fill") {
-                            cloudSync.markWorkoutStarted()
-                            tracker.send(1, movement: exerciseCode, target: UInt8(target))
-                        }
+                            if useCamera { cameraCheck = .before }
+                            else {
+                                cloudSync.markWorkoutStarted()
+                                tracker.send(1, movement: exerciseCode, target: UInt8(target))
+                            }
+                        }.disabled(cloudSync.pendingCameraSet != nil)
                     } else if stage.active {
                         if stage == .before || stage == .after {
                             Text(((tracker.reading?.flags ?? 0) & 2) != 0 ? "Pulse sensor offline. You can skip this reading." :

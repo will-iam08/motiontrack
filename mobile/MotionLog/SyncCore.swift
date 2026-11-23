@@ -450,14 +450,17 @@ final class SetRecorder {
     }
 
     private(set) var active: ActiveSet?
+    private var waitingForActive = false
     private var terminalStageRecorded = false
 
     func reset() {
         active = nil
+        waitingForActive = false
         terminalStageRecorded = false
     }
 
     func markWorkoutStarted(at now: Date = Date()) {
+        waitingForActive = true
         terminalStageRecorded = false
         active = ActiveSet(
             clientId: UUID().uuidString.lowercased(),
@@ -477,6 +480,11 @@ final class SetRecorder {
     func observe(reading: Reading, now: Date = Date()) -> (finished: WorkoutSetPayload?, live: LiveWorkoutPayload?) {
         guard let stage = reading.stage else { return (nil, nil) }
 
+        // The old idle or finished packet can repeat until the ESP32 acknowledges Start.
+        if waitingForActive {
+            guard stage.active else { return (nil, nil) }
+            waitingForActive = false
+        }
         if stage == .idle || stage == .fault || stage == .starting {
             if stage == .idle {
                 terminalStageRecorded = false
