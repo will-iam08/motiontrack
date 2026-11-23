@@ -245,7 +245,7 @@ struct Dashboard: View {
                         }
                         action("End workout", icon: "stop.fill") { tracker.send(2) }
                     } else {
-                        Text(stage == .fault ? "Check the OLED or USB serial message, fix the wiring, then reset the tracker." :
+                        Text(stage == .fault ? "Check the OLED or USB serial message and fix the wiring. The tracker restarts on its own." :
                             "Keep the sensor still while the tracker calibrates.")
                     }
                 }.disabled(tracker.sending)

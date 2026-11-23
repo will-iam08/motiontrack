@@ -88,6 +88,9 @@ unsigned long endedAt = 0;
 
 // `detail` is an optional second line (at most 21 characters) with the value
 // that failed, so the screen shows why the tracker stopped.
+// Shows the fault, then restarts the board on its own after a few seconds, so
+// nobody has to open the case to press the reset button. `detail` is an
+// optional second line (at most 21 characters) with the value that failed.
 void fatal(const char *message, const char *detail = nullptr) {
   Serial.println(message);
   if (detail) Serial.println(detail);
@@ -98,9 +101,12 @@ void fatal(const char *message, const char *detail = nullptr) {
     display.println(message);
     if (detail) display.println(detail);
     display.println("Check wiring/power");
+    display.println();
+    display.println("Restarting in 5 s...");
     display.display();
   }
-  while (true) {
+  const unsigned long shownAt = millis();
+  while (millis() - shownAt < 5000) {
 #if !MOTIONTRACK_WEBSITE
     radio::publish(workout::packet(workout::Fault,0,0,0,0,0,0,0,0));
     workout::Command ignored;
@@ -108,6 +114,8 @@ void fatal(const char *message, const char *detail = nullptr) {
 #endif
     delay(100);
   }
+  Serial.println("Restarting.");
+  ESP.restart();
 }
 
 bool readMpuRegisters(uint8_t reg, uint8_t *data, uint8_t count) {
@@ -175,14 +183,9 @@ void beginMpu() {
   }
 }
 
-void calibrateMotion() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.println("Keep sensor still");
-  display.println("Calibrating...");
-  display.display();
-  Serial.println("Keep the MPU6050 completely still for 2 seconds.");
+// One 2-second calibration attempt. On failure, writes the reading that failed
+// into `detail` and returns false.
+bool tryCalibrateMotion(char *detail, size_t size) {
   float sum[3] = {0, 0, 0};
   float sumSquares[3] = {0, 0, 0};
   const unsigned int samples = 100;
@@ -191,9 +194,8 @@ void calibrateMotion() {
     if (!readMotion(accel, gyro)) fatal("MPU read failed");
     const float gravity = sqrtf(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
     if (gravity < 0.75f || gravity > 1.25f) {
-      char detail[24];
-      snprintf(detail, sizeof(detail), "Accel %.2fg, need ~1", gravity);
-      fatal("Hold still, reset", detail);
+      snprintf(detail, size, "Accel %.2fg, need ~1", gravity);
+      return false;
     }
     for (uint8_t axis = 0; axis < 3; ++axis) {
       sum[axis] += gyro[axis];
@@ -202,17 +204,44 @@ void calibrateMotion() {
     delay(MOTION_MS);
   }
   for (uint8_t axis = 0; axis < 3; ++axis) {
-    gyroBias[axis] = sum[axis] / samples;
-    const float variance = sumSquares[axis] / samples - gyroBias[axis] * gyroBias[axis];
-    if (fabsf(gyroBias[axis]) > 10.0f || variance > 4.0f) {
-      char detail[24];
-      if (fabsf(gyroBias[axis]) > 10.0f) {
-        snprintf(detail, sizeof(detail), "Gyro %c drift %.1f>10", "XYZ"[axis], fabsf(gyroBias[axis]));
-      } else {
-        snprintf(detail, sizeof(detail), "Gyro %c noise %.1f>4", "XYZ"[axis], variance);
-      }
-      fatal("Hold still, reset", detail);
+    const float bias = sum[axis] / samples;
+    const float variance = sumSquares[axis] / samples - bias * bias;
+    if (fabsf(bias) > 10.0f) {
+      snprintf(detail, size, "Gyro %c drift %.1f>10", "XYZ"[axis], fabsf(bias));
+      return false;
     }
+    if (variance > 4.0f) {
+      snprintf(detail, size, "Gyro %c noise %.1f>4", "XYZ"[axis], variance);
+      return false;
+    }
+    gyroBias[axis] = bias;
+  }
+  return true;
+}
+
+// Calibrates the motion sensor, retrying until it has been held still for one
+// full attempt. No reset is needed if it moved: just set it down and wait.
+void calibrateMotion() {
+  char detail[24];
+  for (unsigned attempt = 1; ; ++attempt) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.println("Keep sensor still");
+    display.println("Calibrating...");
+    display.display();
+    Serial.println("Keep the MPU6050 completely still for 2 seconds.");
+    if (tryCalibrateMotion(detail, sizeof(detail))) break;
+    Serial.printf("Calibration attempt %u failed: %s. Retrying.\n", attempt, detail);
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println("Sensor moved.");
+    display.println(detail);
+    display.println();
+    display.println("Set it down flat;");
+    display.println("trying again...");
+    display.display();
+    delay(2000);
   }
   motionOK = true;
 }
