@@ -26,7 +26,7 @@ dashboard for Motion Log (`mobile/`). [Mobile wiring and setup guide](mobile/set
 ```text
 backend/    Node 24 + Express + SQLite API, device protocol, account CLI, email bot, tests
 frontend/   React + Vite website: patient at /, doctor at /doctor, admin at /admin; synthetic test device script
-firmware/   ESP32 Arduino sketch (MotionTrack/), host tests, wiring and flashing guide
+firmware/   ESP32 sketches: MotionTrackSingle/ (Bluetooth app build, one file), MotionTrack/ (Wi-Fi), host tests
 mobile/     SwiftUI iPhone app, Bluetooth-enabled ESP32 firmware, wiring guide and protocol tests
 docs/       user-guide.md (using the website), demo.md (setup and demo script), design/ (the approved design)
 ```

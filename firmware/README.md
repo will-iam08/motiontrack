@@ -5,6 +5,22 @@ sensor and a 128x64 SSD1306 OLED. It polls the MotionTrack backend over Wi-Fi fo
 started on the website, takes a heart-rate check-in before and after the exercise, counts repetitions up to
 the target and uploads every step.
 
+## Bluetooth build in one file (`MotionTrackSingle/`)
+
+[`MotionTrackSingle/MotionTrackSingle.ino`](MotionTrackSingle/MotionTrackSingle.ino) is the Bluetooth firmware
+for the Motion Log iPhone app as a single sketch, so it opens in the Arduino IDE without any companion files.
+It is generated from [`mobile/Firmware/MotionTrack`](../mobile/Firmware/MotionTrack): edit those files, then run
+`python3 firmware/tools/make_single_sketch.py` to rebuild it. Use ESP32 Arduino core 2.0.17, board **DOIT ESP32
+DEVKIT V1**, partition scheme **Huge APP**, and the SparkFun MAX3010x, Adafruit SSD1306, SoftWire and AsyncDelay
+libraries listed below. The pulse sensor is switched off (`HEART_SENSOR_INSTALLED = false`), so heart-rate checks
+are skipped until it is set to `true`.
+
+For battery use, power the ESP32 through **VIN** at 5 V (for example a 9 V battery into a breadboard supply set
+to 5 V) and run the OLED and motion sensor from the ESP32's **3V3** pin. A weak battery browns the board out when
+Bluetooth starts; the OLED then reports "Power too weak".
+
+## Website (Wi-Fi) build (`MotionTrack/`)
+
 > **Still to be tested on the mounted sensor.** The rep-counting thresholds (especially Shoulder Press and
 > Back Row) and the BPM check-in (finger threshold, interval agreement, timeouts) have only been checked with
 > host tests and synthetic data. Expect to tune the values in `config.h` and the counter headers after
