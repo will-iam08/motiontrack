@@ -5,18 +5,17 @@
 
 // shortcut: learns direction from the first swing. Reselect the exercise after remounting.
 //
-// Tuned to be forgiving for older patients and people with limited mobility:
-// slow, small or slightly shaky reps still count, as long as the arm really
-// goes up and comes back down.
+// Thresholds match the curl counter that tested most accurately on the real
+// tracker (the v5 sketch). Lowering them lets drift and small wobbles count.
 class TiltRepCounter {
  public:
-  static constexpr float kStartSpeed = 10.0f;     // deg/s that starts a lift (slow lifts count)
-  static constexpr float kReverseSpeed = 10.0f;   // deg/s downward that ends the lift
-  static constexpr float kAxisLearnSpeed = 10.0f; // deg/s needed to learn the swing axis
-  static constexpr float kDeadband = 5.0f;         // deg/s treated as holding still
-  static constexpr float kMinSwing = 10.0f;       // degrees each way, from the gyro
-  static constexpr float kTremorSpeed = 45.0f;    // upward jerks below this while lowering are ignored
-  static constexpr uint32_t kMaxRepMs = 15000;    // a single rep may take up to 15 s
+  static constexpr float kStartSpeed = 30.0f;     // deg/s that starts a lift
+  static constexpr float kReverseSpeed = 30.0f;   // deg/s downward that ends the lift
+  static constexpr float kAxisLearnSpeed = 30.0f; // deg/s needed to learn the swing axis
+  static constexpr float kDeadband = 10.0f;       // deg/s treated as holding still
+  static constexpr float kMinSwing = 15.0f;       // degrees each way, from the gyro
+  static constexpr float kTremorSpeed = 30.0f;    // an upward move this fast while lowering cancels the rep
+  static constexpr uint32_t kMaxRepMs = 8000;     // a single rep must finish within 8 s
 
   TiltRepCounter(float minimumTilt, float returnTilt) : minimumTilt_(minimumTilt), returnTilt_(returnTilt) {}
 
