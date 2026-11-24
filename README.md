@@ -1,97 +1,124 @@
-<div align="center">
-
-<img src="./docs/assets/icon.png" alt="Motion Track Icon" width="88" height="88" />
+<img align="right" src="./docs/assets/icon.png" alt="" width="56" height="56" />
 
 # Motion Track
 
-**A forearm wearable, iPhone app, and clinical dashboard that record exercise reps, duration, and heart-rate check-ins in clinic and at home.**
+**A wrist-worn rep counter and a shared exercise record for rehabilitation, in clinic and at home.**
 
-<sub>University of Waterloo · ECE 198 · Group 65 · Built for the CCCARE exercise-tracking brief</sub>
+University of Waterloo · ECE 198 · Group 65
 
-<p>
-  <img src="https://img.shields.io/badge/UWaterloo-ECE%20198%20%C2%B7%20Group%2065-0e4a43" alt="University of Waterloo ECE 198 Group 65" />
-  <img src="https://img.shields.io/badge/Hardware-ESP32%20%C2%B7%20MPU6050%20%C2%B7%20OLED-1d4ed8" alt="ESP32 MPU6050 OLED" />
-  <img src="https://img.shields.io/badge/Mobile-iOS%20%C2%B7%20SwiftUI%20%C2%B7%20BLE-111827" alt="iOS SwiftUI BLE" />
-  <img src="https://img.shields.io/badge/Web%20App-React%2019%20%C2%B7%20Express%205%20%C2%B7%20SQLite%20%2F%20Turso-0f766e" alt="React 19 Express 5 SQLite Turso" />
-</p>
+[Project brief](#problem-we-are-solving) · [Watch the demo](#web-demo) · [Test results](#wearable--software-test-results) · [Run locally](#quick-start)
 
-[Problem](#problem-we-are-solving) · [Web Demo](#web-demo) · [Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
+<img src="./docs/assets/wearable-hero.png" alt="Group 65's forearm wearable enclosure with an OLED rep display" width="100%" />
 
-<p>
-  <img src="./docs/assets/wearable-hero.png" alt="Motion Track forearm wearable enclosure CAD model with OLED rep counter" width="780" />
-</p>
-
-<sup><em>Group 65 "Diamond Ends" Fusion CAD forearm enclosure (OLED readout illustrative).</em></sup>
-
-</div>
-
----
+*The “Diamond Ends” enclosure in Fusion CAD. The OLED readout is illustrative.*
 
 ## Problem we are solving
 
 The University of Waterloo’s *F26 ECE 198 Project Overview* (pp. 1–3) asks teams to help CCCARE scale exercise care for older adults. **Motion Track primarily addresses Sub Problem 2, Exercise Tracking and Measurement.** One instructor may supervise 10–12 participants in a session, or up to 30 program graduates. It is hard to see who completed their prescribed reps and who stopped early or did more than planned.
 
-Motion Track measures reps for biceps curls, shoulder presses, and back rows. The wearable counts a rep when the movement meets that exercise’s lift and return rules, then shows the count against the target on its display. The dashboard gives clinicians a record of reps, duration, and before-and-after heart-rate check-ins for reviewing progress.
+Motion Track gives instructors a record of each set when they cannot observe every participant. For the three supported exercises, the wearable counts a rep when the movement meets that exercise’s lift and return rules.
 
 - **Sub Problem 1, Scale Personalized Care.** Clinicians can set and adjust rep targets and a heart-rate range in a shared care plan. The dashboard compares recorded workouts with the current targets to inform follow-up.
 - **Sub Problem 3, Remote (At Home) Care.** Participants can see their prescribed targets and record supported exercises at home. The iPhone app saves workouts offline and syncs them when a connection returns so their assigned clinician can review them remotely.
 
----
+## Overview
+
+1. **Wearable.** The ESP32 counts biceps curls, shoulder presses, and back rows and shows progress toward the selected rep target on the OLED.
+2. **iPhone.** The app receives reps and elapsed time over Bluetooth and saves the set with its before-and-after heart-rate check-ins. It queues workouts offline and syncs them when a connection returns.
+3. **Dashboard.** Patients see their exercise history. Their assigned clinician can review the same record and compare it with the care plan.
+
+A set is **Complete** when the wearable counts all target reps and the record includes both heart-rate readings. Other sets are **Incomplete**. Retried uploads use the same `client_id` so each set appears once.
 
 ## Web Demo
 
-The 31-second walkthrough shows which motions count in the wrist-sensor simulator, how patients follow a live workout, and what doctors and administrators see. It uses simulated sessions and sample accounts.
+The 31-second walkthrough follows a simulated rep from the wrist-sensor demo through the Patient, Doctor, and Admin portals.
 
 https://github.com/user-attachments/assets/94967187-dc10-49e1-82a1-2f25f1f75fb2
 
-[Download the Motion Track walkthrough (MP4)](./docs/assets/motion-track-demo.mp4?raw=true) · [View the simulator screenshot](./docs/assets/screenshots/interactive-showcase.png)
+[Download the MP4](./docs/assets/motion-track-demo.mp4?raw=true) · [See the simulator screenshot](./docs/assets/screenshots/interactive-showcase.png)
 
-To try it locally, open [`/#interactive-demo`](http://localhost:5173/#interactive-demo) after [starting the web app](#quick-start). Choose **Bicep curl**, **Shoulder press**, or **Back row**, then move the slider or select **Simulate 1 rep**. The OLED updates after a valid return. **Try shallow lift** shows how the simulator rejects a partial rep. The demo is available from the patient sign-in page without an account or wearable.
+To try it, [start the web app](#quick-start) and open the [wearable simulator](http://localhost:5173/#interactive-demo). Select an exercise and use **Simulate 1 rep** or the slider. Use **Try shallow lift** to see which movements leave the count unchanged. The simulator is open to signed-out visitors.
 
----
+## Wearable & Software Test Results
 
-## Overview
+### Physical prototype trials
 
-**Motion Track** syncs the following information for each set to the review dashboard:
-1. **Exercise type** (`Biceps curl / Arm Curl`, `Shoulder press`, `Back row`, 1–50 target reps)
-2. **Completed repetitions** (counted live on an on-device OLED)
-3. **Elapsed time + before/after heart rate (BPM)** measured via the **Motion Track** iOS camera pulse estimator or pulse sensor
+Group 65 tested the assembled wearable. The table expresses the team's observations on a common 50-rep scale.
 
-An exercise record is marked **Complete** only when all target reps finish and both heart-rate readings exist (otherwise **Incomplete**). Retried HTTPS uploads from the phone are idempotent (`client_id`) and never double-count. The web app exposes **Patient** (`/`), **Doctor** (`/doctor`), and **Admin** (`/admin`) views (mapped to `participant`, `staff`, and `admin` in the backend API, CLI, and database).
+| Exercise | Equivalent reps detected out of 50 | Detection rate |
+| :--- | ---: | ---: |
+| Biceps curls | Nearly 50 / 50 | Nearly 100% |
+| Shoulder presses | 45–47.5 / 50 | 90–95% |
+| Back rows | About 45–47.5 / 50 | About 90–95% |
 
----
+Shoulder presses missed about 1–2 reps out of 20, which scales to 45–47.5 detections out of 50. The back-row estimate reflects the team's observation that it performed about the same as shoulder presses.
 
-## Hardware & Rep Detection
+The [on-device verification steps](mobile/setup-guide.md#verify-the-setup) describe the manual-count comparison.
 
-<div align="center">
-  <img src="./docs/assets/hardware-architecture.png" alt="Motion Track hardware wiring diagram connecting MPU6050, ESP32 DOIT DevKit V1, SSD1306 OLED, 9V power regulator, and iPhone BLE" width="820" />
-</div>
+<details>
+<summary>Simulated rep counts, software checks, and next steps</summary>
 
-### Wearable Hardware Architecture
+### Simulated rep counts
 
-| Subsystem | Part / Interface | Connection & Responsibility |
-| :--- | :--- | :--- |
-| **Microcontroller** | `ESP32 DOIT DevKit V1` | Runs IMU calibration, local rep-counting state machine, workout timer, and BLE GATT service |
-| **Motion Sensor** | `MPU6050` (3-axis accel + gyro) | Connected via I²C (`GPIO 32 SDA`, `GPIO 33 SCL`); measures forearm tilt & angular velocity |
-| **Wearable Display** | `SSD1306 OLED` | Connected via I²C (`GPIO 21 SDA`, `GPIO 22 SCL`); displays prompts, live count, and set results |
-| **Power Rail** | `9 V` battery → Breadboard regulator | Regulated `+3.3 V` and common `GND` feeding ESP32, MPU6050, and SSD1306 OLED |
-| **Enclosure** | 3D-printed *Diamond Ends* case | Secures the IMU cleanly along the forearm while keeping the OLED glanceable mid-set |
-| **Wireless Link** | Bluetooth Low Energy (BLE) | Exchanges workout config and live counts with `Motion Track`; ESP32 keeps counting if BLE drops |
+The [curl benchmark](mobile/tests/accuracy.cpp) and [wrist counter checks](mobile/tests/wrist.cpp) feed generated motion traces into the firmware counters. They compare counter totals with the expected reps for each simulated set.
 
-### Wrist-Strapped Rep Detection & Firmware Checks
-For all three exercises, strap the `MPU6050` snugly **just above the wrist** of the working arm (holding the starting pose until **`Hold wrist still`** clears on the OLED for Shoulder press and Back row). Rep counting runs directly on the ESP32 (`TiltRepCounter.h` / `WristRepCounter.h`) and increments **only on the return**:
-1. **Bicep curl (arm lowered, elbow by side):** Curl up until the forearm tilts **≥ 45°** from the bottom (`≥ 0.5 s` total, including `≥ 0.1 s` between crossing `45°` and returning), then lower within **20°** of resting angle (the first completed rep sets the lift direction).
-2. **Shoulder press (hand at shoulder height):** Press overhead (**≥ 12 cm** lift) and lower back to shoulder height (**≥ 10.2 cm** return, **≥ 30 cm** combined).
-3. **Back row (lean forward, working arm hanging):** Pull hand toward your hip (**≥ 10 cm** lift) and lower until hanging again (**≥ 8.5 cm** return, **≥ 25 cm** combined).
-- **Press & row timing/symmetry guard:** Each direction must last **≥ 0.22 s**, with estimated return within **42%–380%** of the estimated lift.
+| Exercise and test input | Expected reps | Counter total | Rep shortfall | Reps above expected |
+| :--- | ---: | ---: | ---: | ---: |
+| Biceps curls, standard simulation | 10,000 | 10,000 | 0 | 0 |
+| Biceps curls, higher-noise stress simulation | 4,000 | 3,998 | 2 | 0 |
+| Shoulder presses and back rows, simulated wrist motion | 224 | 224 | 0 | 0 |
 
----
+Each curl run also included 1,400 rejection trials with movements such as partial lifts, tremor, and strap adjustments. Every rejection trial finished at or below its reference count.
+
+### Automated software checks
+
+All [test commands](#test-suites) passed on November 24, 2026, at revision `fbe3ead`. The backend runner reported 68 passes. The frontend passed 84 tests and built successfully. The legacy firmware passed 27 host checks. The mobile suite passed its host motion and workout checks, Swift packet decoding, offline sync, and synthetic camera pulse checks.
+
+### Next-Prototype Focus
+
+- **Movement calibration:** Benchmark varied strap placement, repetition cadence, and partial ranges of motion.
+- **Wearable ergonomics:** Validate one-handed strap fastening and OLED glanceability under load.
+- **Extended device support:** Expand mobile companion support to Android and validate cross-device camera PPG estimation.
+
+</details>
+
+## Web Portals
+
+<img src="./docs/assets/screenshots/patient-live.png" alt="Patient Overview showing an active Arm Curl set and heart-rate checkpoints" width="680" />
+
+*Patient Overview during a simulated set.*
+
+| Portal | What you can do |
+| :--- | :--- |
+| **Patient** (`/`) | Follow live reps, review exercise history and progress, see your care plan, and message your doctor. |
+| **Doctor** (`/doctor`) | Follow live workouts, review assigned patients, update rep and heart-rate targets, reply to messages, and print workout history. |
+| **Admin** (`/admin`) | Review clinic activity, assign patients to doctors, and manage doctor accounts. |
+
+<details>
+<summary>See the progress dashboard, doctor inbox, and admin overview</summary>
+
+**Patient progress**
+
+<img src="./docs/assets/screenshots/patient-progress.png" alt="Patient progress showing completed exercises and before-and-after heart-rate charts" width="620" />
+
+| Doctor · Patient inbox | Admin · Clinic overview |
+| :--- | :--- |
+| <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor portal showing patient messages and exercise status" width="380" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin portal showing clinic activity, assignments, and account totals" width="380" /> |
+
+</details>
+
+Portal transitions follow the system’s reduced-motion setting. See the [portal guide](docs/guides/user-guide.md) for the full workflow. In the API and CLI, the roles are `participant`, `staff`, and `admin`.
 
 ## System Architecture
 
 <div align="center">
   <img src="./docs/assets/software-architecture.png" alt="Motion Track software data flow from ESP32 BLE calibration and rep counting to Motion Track HTTPS sync, Express API, and React dashboard" width="820" />
 </div>
+
+The hardware uses an ESP32 and MPU6050. The iPhone app uses SwiftUI and BLE. The web app uses React and Vite, with an Express API backed by SQLite or Turso.
+
+<details>
+<summary>iPhone pulse capture, offline sync, and repository layout</summary>
 
 ### Motion Track iPhone Companion & Camera Pulse Check
 
@@ -122,72 +149,46 @@ motiontrack/
 └── render.yaml             # One-click Render deployment blueprint (Node 24 + Turso env config)
 ```
 
----
+</details>
 
-## Wearable & Software Test Results
+## Hardware & Rep Detection
 
-### Physical prototype trials
+### Wrist-Strapped Rep Detection & Firmware Checks
 
-Group 65 tested the assembled wearable. The table expresses the team's observations on a common 50-rep scale.
+For all three exercises, strap the `MPU6050` snugly **just above the wrist** of the working arm (holding the starting pose until **`Hold wrist still`** clears on the OLED for Shoulder press and Back row). Rep counting runs directly on the ESP32 (`TiltRepCounter.h` / `WristRepCounter.h`) and increments **only on the return**:
+1. **Bicep curl (arm lowered, elbow by side):** Curl up until the forearm tilts **≥ 45°** from the bottom (`≥ 0.5 s` total, including `≥ 0.1 s` between crossing `45°` and returning), then lower within **20°** of resting angle (the first completed rep sets the lift direction).
+2. **Shoulder press (hand at shoulder height):** Press overhead (**≥ 12 cm** lift) and lower back to shoulder height (**≥ 10.2 cm** return, **≥ 30 cm** combined).
+3. **Back row (lean forward, working arm hanging):** Pull hand toward your hip (**≥ 10 cm** lift) and lower until hanging again (**≥ 8.5 cm** return, **≥ 25 cm** combined).
+- **Press & row timing/symmetry guard:** Each direction must last **≥ 0.22 s**, with estimated return within **42%–380%** of the estimated lift.
 
-| Exercise | Equivalent reps detected out of 50 | Detection rate |
-| :--- | ---: | ---: |
-| Biceps curls | Nearly 50 / 50 | Nearly 100% |
-| Shoulder presses | 45–47.5 / 50 | 90–95% |
-| Back rows | About 45–47.5 / 50 | About 90–95% |
+<details>
+<summary>Wiring diagram and hardware parts</summary>
 
-Shoulder presses missed about 1–2 reps out of 20, which scales to 45–47.5 detections out of 50. The back-row estimate reflects the team's observation that it performed about the same as shoulder presses.
+<div align="center">
+  <img src="./docs/assets/hardware-architecture.png" alt="Motion Track hardware wiring diagram connecting MPU6050, ESP32 DOIT DevKit V1, SSD1306 OLED, 9V power regulator, and iPhone BLE" width="820" />
+</div>
 
-The [on-device verification steps](mobile/setup-guide.md#verify-the-setup) describe the manual-count comparison.
+### Wearable Hardware Architecture
 
-### Simulated rep counts
+| Subsystem | Part / Interface | Connection & Responsibility |
+| :--- | :--- | :--- |
+| **Microcontroller** | `ESP32 DOIT DevKit V1` | Runs IMU calibration, local rep-counting state machine, workout timer, and BLE GATT service |
+| **Motion Sensor** | `MPU6050` (3-axis accel + gyro) | Connected via I²C (`GPIO 32 SDA`, `GPIO 33 SCL`); measures forearm tilt & angular velocity |
+| **Wearable Display** | `SSD1306 OLED` | Connected via I²C (`GPIO 21 SDA`, `GPIO 22 SCL`); displays prompts, live count, and set results |
+| **Power Rail** | `9 V` battery → Breadboard regulator | Regulated `+3.3 V` and common `GND` feeding ESP32, MPU6050, and SSD1306 OLED |
+| **Enclosure** | 3D-printed *Diamond Ends* case | Secures the IMU cleanly along the forearm while keeping the OLED glanceable mid-set |
+| **Wireless Link** | Bluetooth Low Energy (BLE) | Exchanges workout config and live counts with `Motion Track`; ESP32 keeps counting if BLE drops |
 
-The [curl benchmark](mobile/tests/accuracy.cpp) and [wrist counter checks](mobile/tests/wrist.cpp) feed generated motion traces into the firmware counters. They compare counter totals with the expected reps for each simulated set.
-
-| Exercise and test input | Expected reps | Counter total | Rep shortfall | Reps above expected |
-| :--- | ---: | ---: | ---: | ---: |
-| Biceps curls, standard simulation | 10,000 | 10,000 | 0 | 0 |
-| Biceps curls, higher-noise stress simulation | 4,000 | 3,998 | 2 | 0 |
-| Shoulder presses and back rows, simulated wrist motion | 224 | 224 | 0 | 0 |
-
-Each curl run also included 1,400 rejection trials with movements such as partial lifts, tremor, and strap adjustments. Every rejection trial finished at or below its reference count.
-
-### Automated software checks
-
-All [test commands](#test-suites) passed on November 24, 2026, at revision `fbe3ead`. The backend runner reported 68 passes. The frontend passed 84 tests and built successfully. The legacy firmware passed 27 host checks. The mobile suite passed its host motion and workout checks, Swift packet decoding, offline sync, and synthetic camera pulse checks.
-
-### Next-Prototype Focus
-- **Movement calibration:** Benchmark varied strap placement, repetition cadence, and partial ranges of motion.
-- **Wearable ergonomics:** Validate one-handed strap fastening and OLED glanceability under load.
-- **Extended device support:** Expand mobile companion support to Android and validate cross-device camera PPG estimation.
-
----
-
-## Web Portals
-
-Portal loads, tabs, and patient-record navigation animate when reduced motion is off. Buttons, forms, and reply editors give visual feedback as you use them.
-
-| Patient — Live Rep Session (`/`) | Patient — 30-Day Progress (`/`) |
-| :---: | :---: |
-| <img src="./docs/assets/screenshots/patient-live.png" alt="Patient Overview showing the Arm Curl rep count and heart-rate checkpoints in the live workout HUD" width="100%" /> | <img src="./docs/assets/screenshots/patient-progress.png" alt="Patient Progress showing completed exercises and before-and-after heart-rate charts" width="100%" /> |
-| **Doctor — Patient Inbox (`/doctor`)** | **Admin — System Overview (`/admin`)** |
-| <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor portal showing the patient inbox and current exercise status" width="100%" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin overview showing patient, doctor, session, device, and unread message metrics" width="100%" /> |
-
-- **Patient (`/`)** follows active workouts in **Overview**, reviews synced sets in **History**, checks exercise totals and before-and-after heart rate in **Progress**, and contacts their doctor in **Messages**.
-- **Doctor (`/doctor`)** replies to patient messages, filters assigned patients by activity and follow-up status, and opens each patient’s record to review workouts, set rep and heart-rate targets, and print clinical history.
-- **Admin (`/admin`)** reviews clinic activity, assigns patients to doctors, and manages doctor accounts.
-
----
+</details>
 
 ## Quick Start
 
-Run the full web platform locally **without hardware** (requires **Node.js 24+**):
+Run the web app with **Node.js 24+**. Open both terminals at the repository root.
 
 ```bash
 # Terminal 1 — Express + SQLite API (:3000)
 cd backend
 npm ci
-test -f .env || cp .env.example .env
 npm start
 ```
 
@@ -195,11 +196,10 @@ npm start
 # Terminal 2 — React + Vite Dashboard (:5173)
 cd frontend
 npm ci
-test -f .env.local || cp .env.example .env.local
 npm run dev
 ```
 
-Visit **http://localhost:5173/** (Patient), **/doctor**, or **/admin**. The patient landing page includes the [interactive wearable demo](http://localhost:5173/#interactive-demo). For the full system walkthrough, see the [course demo guide](docs/guides/demo.md).
+Open the [patient page](http://localhost:5173/) or go directly to the [wearable simulator](http://localhost:5173/#interactive-demo). The doctor and admin portals are at `/doctor` and `/admin`. The [course demo guide](docs/guides/demo.md) covers hardware and account setup.
 
 ### Test Suites
 
@@ -211,14 +211,13 @@ Visit **http://localhost:5173/** (Patient), **/doctor**, or **/admin**. The pati
 | **Mobile firmware & Swift** | `bash mobile/tests/run.sh` | Simulated rep counts, workout flow, BLE packet decoding, sync, and synthetic camera pulse checks |
 
 ### Documentation Index
+
 - [`docs/guides/user-guide.md`](docs/guides/user-guide.md) — Patient, doctor, and admin portal walkthrough
 - [`docs/guides/demo.md`](docs/guides/demo.md) — Complete demo setup (synthetic device, real ESP32, LAN/Cloudflare Tunnel, email bot)
 - [`backend/README.md`](backend/README.md) — REST API, device protocol, SQLite/Turso schema, demo account seeding (`DEMO_*_PASSWORD`)
 - [`frontend/README.md`](frontend/README.md) — Vite environment setup, proxy configuration & synthetic device flags
 - [`firmware/README.md`](firmware/README.md) & [`mobile/README.md`](mobile/README.md) — Wiring, flashing, BLE setup guide ([`mobile/setup-guide.md`](mobile/setup-guide.md)), and iPhone camera PPG
 - [`docs/design/2026-11-18-motiontrack-design.md`](docs/design/2026-11-18-motiontrack-design.md) — Approved engineering design record
-
----
 
 ## Team & Credits
 
