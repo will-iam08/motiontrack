@@ -4,7 +4,7 @@
 
 # Motion Track
 
-**A forearm wearable, iOS companion, and clinical review dashboard for counting exercise reps and heart rate between supervised sessions.**
+**A forearm wearable, iPhone app, and clinical dashboard that record exercise reps, duration, and heart-rate check-ins in clinic and at home.**
 
 <sub>University of Waterloo · ECE 198 · Group 65 · Built for the CCCARE exercise-tracking brief</sub>
 
@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Web%20App-React%2019%20%C2%B7%20Express%205%20%C2%B7%20SQLite%20%2F%20Turso-0f766e" alt="React 19 Express 5 SQLite Turso" />
 </p>
 
-[Web Demo](#web-demo) · [Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
+[Problem](#problem-we-are-solving) · [Web Demo](#web-demo) · [Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
 
 <p>
   <img src="./docs/assets/wearable-hero.png" alt="Motion Track forearm wearable enclosure CAD model with OLED rep counter" width="780" />
@@ -24,6 +24,17 @@
 <sup><em>Group 65 "Diamond Ends" Fusion CAD forearm enclosure (OLED readout illustrative).</em></sup>
 
 </div>
+
+---
+
+## Problem we are solving
+
+The University of Waterloo’s *F26 ECE 198 Project Overview* (pp. 1–3) asks teams to help CCCARE scale exercise care for older adults. **Motion Track primarily addresses Sub Problem 2, Exercise Tracking and Measurement.** One instructor may supervise 10–12 participants in a session, or up to 30 program graduates. It is hard to see who completed their prescribed reps and who stopped early or did more than planned.
+
+Motion Track measures reps for biceps curls, shoulder presses, and back rows. The wearable counts a rep when the movement meets that exercise’s lift and return rules, then shows the count against the target on its display. The dashboard gives clinicians a record of reps, duration, and before-and-after heart-rate check-ins for reviewing progress.
+
+- **Sub Problem 1, Scale Personalized Care.** Clinicians can set and adjust rep targets and a heart-rate range in a shared care plan. The dashboard compares recorded workouts with the current targets to inform follow-up.
+- **Sub Problem 3, Remote (At Home) Care.** Participants can see their prescribed targets and record supported exercises at home. The iPhone app saves workouts offline and syncs them when a connection returns so their assigned clinician can review them remotely.
 
 ---
 
@@ -41,9 +52,7 @@ To try it locally, open [`/#interactive-demo`](http://localhost:5173/#interactiv
 
 ## Overview
 
-Between supervised cardiac/rehabilitation sessions (such as CCCARE clinics), participants have to maintain proper form, count repetitions mid-set, and remember totals afterward. If a set goes unrecorded, clinicians lack accurate adherence history at follow-up.
-
-**Motion Track** captures three concrete facts per set **locally on a forearm wearable** and syncs them to a review dashboard:
+**Motion Track** syncs the following information for each set to the review dashboard:
 1. **Exercise type** (`Biceps curl / Arm Curl`, `Shoulder press`, `Back row`, 1–50 target reps)
 2. **Completed repetitions** (counted live on an on-device OLED)
 3. **Elapsed time + before/after heart rate (BPM)** measured via the **Motion Track** iOS camera pulse estimator or pulse sensor
