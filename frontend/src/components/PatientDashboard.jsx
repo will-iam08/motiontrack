@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../api.js';
 import { bpmCheck, hasTargets, repsCheck } from '../lib/carePlan.js';
 import { bpmLabel, isOpen, statusLabel } from '../lib/exerciseStatus.js';
 import { formatClock, formatDateTime } from '../lib/format.js';
+import { AnimatedNumber } from './AnimatedNumber.jsx';
 import { CarePlanCard } from './CarePlan.jsx';
 import { CopyButton, ErrorMessage, Icon, LiveBadge, Loading, PlanCheck, ScreenHeading, StatusBadge } from './common.jsx';
 import { LiveWorkoutHud } from './LiveWorkoutHud.jsx';
@@ -64,7 +65,7 @@ function LiveAppBanner({ plan }) {
 
   return (
     <section aria-labelledby="patient-live-heading" className="live-block">
-      <h3 id="patient-live-heading">Live from Motion Log <LiveBadge /></h3>
+      <h3 id="patient-live-heading">Live from Motion Track <LiveBadge /></h3>
       <p className="context-line">Started {formatDateTime(live.session.created_at)}.</p>
       {live.error && (
         <p className="alert alert-warning" role="status">
@@ -80,7 +81,7 @@ function LiveAppBanner({ plan }) {
           perspective="patient"
         />
       )}
-      <SessionTable session={live.session} serverTime={live.serverTime} plan={plan} caption="Current exercise from Motion Log" />
+      <SessionTable session={live.session} serverTime={live.serverTime} plan={plan} caption="Current exercise from Motion Track" />
     </section>
   );
 }
@@ -89,13 +90,13 @@ function SetupCard({ serverUrl, collapsed }) {
   const instructions = (
     <>
       <ol className="app-steps">
-        <li>Open <strong>Motion Log</strong> on your iPhone, pick <strong>My tracker</strong> and connect your tracker over Bluetooth.</li>
+        <li>Open <strong>Motion Track</strong> on your iPhone, pick <strong>My tracker</strong> and connect your tracker over Bluetooth.</li>
         <li>Tap <strong>Sign in</strong> (or <strong>Account</strong>), enter the server URL below and sign in with this patient email and password.</li>
         <li>Pick Arm Curl, Shoulder Press, or Back Row (1–50 reps). Finished and stopped sets queue offline and sync here automatically.</li>
       </ol>
       {serverUrl && (
         <div className="field app-url-field">
-          <label htmlFor="app-server-url">Server URL for the Motion Log app</label>
+          <label htmlFor="app-server-url">Server URL for the Motion Track app</label>
           <div className="app-url-row">
             <input id="app-server-url" type="text" readOnly value={serverUrl} onFocus={event => event.target.select()} />
             <CopyButton text={serverUrl} label="Copy server URL" copiedLabel="Copied server URL" />
@@ -112,8 +113,8 @@ function SetupCard({ serverUrl, collapsed }) {
           <div className="plan-card-head">
             <span className="feature-icon"><Icon name="device" /></span>
             <div>
-              <h3 id="app-guide-heading">Motion Log iPhone setup &amp; Server URL</h3>
-              <p className="hint">Connect your Bluetooth wrist tracker in the Motion Log app to sync sets here.</p>
+              <h3 id="app-guide-heading">Motion Track iPhone setup &amp; Server URL</h3>
+              <p className="hint">Connect your Bluetooth wrist tracker in the Motion Track app to sync sets here.</p>
             </div>
           </div>
           {serverUrl && <CopyButton text={serverUrl} label="Copy server URL" copiedLabel="Copied server URL" />}
@@ -131,8 +132,8 @@ function SetupCard({ serverUrl, collapsed }) {
       <div className="plan-card-head">
         <span className="feature-icon"><Icon name="device" /></span>
         <div>
-          <h3 id="app-guide-heading">Record exercises with the Motion Log app</h3>
-          <p className="hint">Your tracker connects over Bluetooth to Motion Log on your iPhone, then syncs every set here.</p>
+          <h3 id="app-guide-heading">Record exercises with the Motion Track app</h3>
+          <p className="hint">Your tracker connects over Bluetooth to Motion Track on your iPhone, then syncs every set here.</p>
         </div>
       </div>
       {instructions}
@@ -171,15 +172,15 @@ export function PatientDashboard({
         <div className="tiles" role="group" aria-label="Synced workout totals">
           <div className="tile">
             <p className="tile-label"><Icon name="check" />Completed exercises</p>
-            <p className="tile-value">{progress.completed_workouts ?? 0}</p>
+            <p className="tile-value"><AnimatedNumber value={progress.completed_workouts ?? 0} /></p>
           </div>
           <div className="tile">
             <p className="tile-label"><Icon name="dumbbell" />Total repetitions</p>
-            <p className="tile-value">{progress.total_repetitions ?? 0}</p>
+            <p className="tile-value"><AnimatedNumber value={progress.total_repetitions ?? 0} /></p>
           </div>
           <div className="tile">
             <p className="tile-label"><Icon name="history" />Synced sessions</p>
-            <p className="tile-value">{totalSessions}</p>
+            <p className="tile-value"><AnimatedNumber value={totalSessions} /></p>
           </div>
         </div>
       )}
@@ -199,7 +200,7 @@ export function PatientDashboard({
       {sessionsError && <ErrorMessage error={sessionsError} onRetry={onRetrySessions} />}
       {recentSessions === null && !sessionsError && <Loading label="Loading recent sets…" />}
       {!sessionsError && recentSessions !== null && latestWorkouts.length === 0 && (
-        <p className="empty">No sets synced yet. Record an exercise in the Motion Log iPhone app and it will appear here.</p>
+        <p className="empty">No sets synced yet. Record an exercise in the Motion Track iPhone app and it will appear here.</p>
       )}
       {latestWorkouts.length > 0 && (
         <ul className="list">

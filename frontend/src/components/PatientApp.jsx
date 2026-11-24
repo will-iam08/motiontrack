@@ -9,6 +9,7 @@ import { SessionHistory } from './SessionHistory.jsx';
 export function PatientApp() {
   const { api, user } = useAuth();
   const [view, setView] = useState('dashboard');
+  const [tabDir, setTabDir] = useState('none');
   const [plan, setPlan] = useState(null);
   const [planError, setPlanError] = useState(null);
   const [planAttempt, setPlanAttempt] = useState(0);
@@ -91,17 +92,6 @@ export function PatientApp() {
     setOverviewTick(n => n + 1);
   }
 
-  function changeView(next) {
-    setView(next);
-    if (next === 'dashboard') {
-      setOverviewTick(n => n + 1);
-    } else if (next === 'history' || next === 'progress') {
-      setTabTick(n => n + 1);
-    } else if (next === 'messages') {
-      setSeenRepliesAt(latestReplyAt || new Date().toISOString());
-    }
-  }
-
   const views = [
     { id: 'dashboard', label: 'Overview', icon: 'pulse' },
     { id: 'history', label: 'History', icon: 'history' },
@@ -115,38 +105,57 @@ export function PatientApp() {
     },
   ];
 
+  function changeView(next) {
+    if (next === view) return;
+    const prevIdx = views.findIndex(item => item.id === view);
+    const nextIdx = views.findIndex(item => item.id === next);
+    setTabDir(nextIdx > prevIdx ? 'forward' : 'backward');
+    setView(next);
+    if (next === 'dashboard') {
+      setOverviewTick(n => n + 1);
+    } else if (next === 'history' || next === 'progress') {
+      setTabTick(n => n + 1);
+    } else if (next === 'messages') {
+      setSeenRepliesAt(latestReplyAt || new Date().toISOString());
+    }
+  }
+
+  const panelClass = tabDir === 'forward' ? 'tab-panel-forward' : tabDir === 'backward' ? 'tab-panel-backward' : undefined;
+
   return (
     <>
       <TabNav views={views} current={view} onChange={changeView} label="Patient sections" />
       <div className="card">
         {planError && view !== 'dashboard' && <ErrorMessage error={planError} onRetry={() => setPlanAttempt(n => n + 1)} />}
-        {view === 'dashboard' && (
-          <PatientDashboard
-            plan={plan}
-            planError={planError}
-            onRetryPlan={() => setPlanAttempt(n => n + 1)}
-            progress={progress}
-            progressError={progressError}
-            onRetryProgress={reloadDashboard}
-            recentSessions={recentSessions}
-            sessionsError={sessionsError}
-            onRetrySessions={reloadDashboard}
-            totalSessions={totalSessions}
-            completedExercises={progress?.completed_workouts ?? 0}
-            onboardingDismissed={onboardingDismissed}
-            onDismissOnboarding={() => setOnboardingDismissed(true)}
-            onOpenTab={changeView}
-          />
-        )}
-        {view === 'history' && (
-          <SessionHistory
-            refreshKey={tabTick}
-            plan={plan}
-            printContext={{ patientName: user?.name, patientEmail: user?.email, plan }}
-          />
-        )}
-        {view === 'progress' && <RepProgress refreshKey={tabTick} plan={plan} />}
-        {view === 'messages' && <PatientMessages />}
+        <div key={view} className={panelClass}>
+          {view === 'dashboard' && (
+            <PatientDashboard
+              plan={plan}
+              planError={planError}
+              onRetryPlan={() => setPlanAttempt(n => n + 1)}
+              progress={progress}
+              progressError={progressError}
+              onRetryProgress={reloadDashboard}
+              recentSessions={recentSessions}
+              sessionsError={sessionsError}
+              onRetrySessions={reloadDashboard}
+              totalSessions={totalSessions}
+              completedExercises={progress?.completed_workouts ?? 0}
+              onboardingDismissed={onboardingDismissed}
+              onDismissOnboarding={() => setOnboardingDismissed(true)}
+              onOpenTab={changeView}
+            />
+          )}
+          {view === 'history' && (
+            <SessionHistory
+              refreshKey={tabTick}
+              plan={plan}
+              printContext={{ patientName: user?.name, patientEmail: user?.email, plan }}
+            />
+          )}
+          {view === 'progress' && <RepProgress refreshKey={tabTick} plan={plan} />}
+          {view === 'messages' && <PatientMessages />}
+        </div>
       </div>
     </>
   );

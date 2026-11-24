@@ -1,7 +1,7 @@
-# MotionTrack backend
+# Motion Track backend
 
-Local Node.js 24 + Express 5 + SQLite backend for MotionTrack. Patients record workouts on the ESP32 over Bluetooth
-using the **Motion Log** iPhone app (`mobile/`) and sync completed or stopped sets over HTTPS to this server.
+Local Node.js 24 + Express 5 + SQLite backend for Motion Track. Patients record workouts on the ESP32 over Bluetooth
+using the **Motion Track** iPhone app (`mobile/`) and sync completed or stopped sets over HTTPS to this server.
 Supported exercises are Arm Curl (wire code `1`, `arm_curl`), Shoulder Press (wire code `3`, `shoulder_press`) and
 Back Row (wire code `4`, `back_row`) with a target of `1–50` reps (wire code `2` / Lateral raise is unused and rejected).
 Legacy direct Wi-Fi ESP32 routes (`/api/device/*`, `/api/devices`) remain active for backward compatibility and
@@ -65,7 +65,7 @@ Exercise (workout) `W`. This is a finished Arm Curl; every column of the `workou
 }
 ```
 
-A missing check-in is `null`, never 0. `*_skipped` is 0 or 1. Old workouts from before MotionTrack have
+A missing check-in is `null`, never 0. `*_skipped` is 0 or 1. Old workouts from before Motion Track have
 `kind:"timed"`, a `target_duration_seconds` and null rep fields (`session_id`, `exercise_id`, `target_reps`, `phase`).
 
 Progress `P`, calculated from `completed` workouts only:
@@ -220,11 +220,11 @@ Every admin route answers 403 to participants and staff.
 
 ### Legacy timed workouts
 
-Before MotionTrack the API recorded fixed-duration workouts. Those routes remain so old data stays readable and the
+Before Motion Track the API recorded fixed-duration workouts. Those routes remain so old data stays readable and the
 old tests stay valid; the website no longer offers them (it only lists old workouts and lets a patient cancel one that
 is still open, because an open workout blocks the device).
 
-### Motion Log iPhone app sync (participant)
+### Motion Track iPhone app sync (participant)
 
 Authenticated with a patient bearer token (`Authorization: Bearer <token>` from `POST /api/auth/login` with
 `"portal": "patient"`):
@@ -272,7 +272,7 @@ Routes use the device token. Every authenticated request also updates the device
 **Poll.** `GET /api/device/workout` returns `{"workout":W}` for the device's single pending/active workout, or
 `{"workout":null}`. The firmware polls about once a second. Each poll sets that workout's `device_seen_at`. The
 fields the device uses are `id`, `kind`, `exercise_id`, `exercise_name`, `target_reps`, `phase`, `repetitions`,
-`last_sequence` and `status`. A `kind:"timed"` workout is left over from before MotionTrack and is not run.
+`last_sequence` and `status`. A `kind:"timed"` workout is left over from before Motion Track and is not run.
 
 **Upload.** `POST /api/device/workouts/:id/updates` with one of four bodies. `sequence` is an integer 1 to
 2147483647 that must be larger than the workout's `last_sequence`.

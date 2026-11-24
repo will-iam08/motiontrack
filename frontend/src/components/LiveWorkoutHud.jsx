@@ -68,8 +68,8 @@ export function LiveWorkoutHud({ workout, serverTime, disconnected = false, pers
 
   const staleGuidance = isApp
     ? (perspective === 'doctor'
-      ? 'The Motion Log app has not sent an update recently. Finished sets sync automatically once the phone is back online.'
-      : 'Check the Motion Log app on your phone. Finished sets queue offline and sync when reconnected.')
+      ? 'The Motion Track app has not sent an update recently. Finished sets sync automatically once the phone is back online.'
+      : 'Check the Motion Track app on your phone. Finished sets queue offline and sync when reconnected.')
     : (perspective === 'doctor'
       ? 'The patient may need to check that the device is switched on and connected to Wi-Fi.'
       : 'Check that the device is switched on and connected to Wi-Fi.');
@@ -78,7 +78,7 @@ export function LiveWorkoutHud({ workout, serverTime, disconnected = false, pers
     <section className={stale ? 'live live-stale' : 'live'} aria-labelledby={headingId}>
       <div className="hud-head">
         <div>
-          <p className="eyebrow">{isApp ? 'Live from Motion Log' : 'Current exercise'}</p>
+          <p className="eyebrow">{isApp ? 'Live from Motion Track' : 'Current exercise'}</p>
           <h4 id={headingId} className="live-heading">{workout.exercise_name}</h4>
         </div>
         <div className="hud-tools">
@@ -107,7 +107,10 @@ export function LiveWorkoutHud({ workout, serverTime, disconnected = false, pers
           </p>
           <p className="rep-count-label" aria-hidden="true">reps</p>
           <div className="rep-bar" aria-hidden="true">
-            <div className="rep-bar-fill" style={{ transform: `scaleX(${percent / 100})` }} />
+            <div
+              className={workout.phase === 'counting' && !disconnected ? 'rep-bar-fill rep-bar-fill-active' : 'rep-bar-fill'}
+              style={{ transform: `scaleX(${percent / 100})` }}
+            />
           </div>
         </div>
 
@@ -115,7 +118,7 @@ export function LiveWorkoutHud({ workout, serverTime, disconnected = false, pers
           <div className={`sensor-banner sensor-${sensor}`}>
             <Icon name={sensor === 'offline' ? 'wifiOff' : sensor === 'stale' ? 'alert' : 'signal'} />
             <p className="device-line" aria-live="polite">
-              <strong>{isApp ? 'Motion Log:' : 'Device:'}</strong> {deviceLine(workout)}
+              <strong>{isApp ? 'Motion Track:' : 'Device:'}</strong> {deviceLine(workout)}
             </p>
           </div>
           <p className="visually-hidden" aria-live="polite">{stale ? 'Device not responding.' : ''}</p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWidth } from '../hooks/useWidth.js';
 import { bpmCheck, bpmRangeLabel, hasBpmTarget } from '../lib/carePlan.js';
 import { formatDateTime, formatDurationWords } from '../lib/format.js';
@@ -26,7 +26,7 @@ function Tooltip({ x, y, width, lines }) {
   const left = Math.max(2, Math.min(x - boxWidth / 2, width - boxWidth - 2));
   const top = Math.max(y - boxHeight - 12, 2);
   return (
-    <g pointerEvents="none">
+    <g pointerEvents="none" className="chart-tip">
       <rect className="chart-tip-box" x={left} y={top} width={boxWidth} height={boxHeight} rx="6" />
       {fittedLines.map((line, index) => (
         <text key={`${index}-${line}`} className={index === 0 ? 'chart-tip-strong' : 'chart-tip-text'} x={left + 10} y={top + 22 + index * 20}>{line}</text>
@@ -39,13 +39,35 @@ function metricValue(metric, value) {
   return metric === 'duration_seconds' ? formatDurationWords(value) : String(value);
 }
 
-function interactiveProps(index, active, setActive, ariaLabel) {
+function adjacentFocusIndex(index, key, isInteractive, length) {
+  if (key === 'ArrowRight') {
+    for (let i = index + 1; i < length; i += 1) if (isInteractive(i)) return i;
+    return null;
+  }
+  if (key === 'ArrowLeft') {
+    for (let i = index - 1; i >= 0; i -= 1) if (isInteractive(i)) return i;
+    return null;
+  }
+  if (key === 'Home') {
+    for (let i = 0; i < length; i += 1) if (isInteractive(i)) return i;
+    return null;
+  }
+  if (key === 'End') {
+    for (let i = length - 1; i >= 0; i -= 1) if (isInteractive(i)) return i;
+    return null;
+  }
+  return null;
+}
+
+function interactiveProps({ index, active, setActive, ariaLabel, itemRefs, isInteractive, length }) {
   const toggle = () => setActive(prev => (prev === index ? null : index));
   return {
+    ref: el => { itemRefs.current[index] = el; },
     className: 'chart-bar-wrap',
     tabIndex: 0,
     role: 'button',
     'aria-label': ariaLabel,
+    'aria-pressed': active === index,
     onPointerEnter: () => setActive(index),
     onFocus: () => setActive(index),
     onBlur: () => setActive(prev => (prev === index ? null : prev)),
@@ -56,6 +78,12 @@ function interactiveProps(index, active, setActive, ariaLabel) {
       } else if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         toggle();
+      } else {
+        const nextIndex = adjacentFocusIndex(index, event.key, isInteractive, length);
+        if (nextIndex !== null) {
+          event.preventDefault();
+          itemRefs.current[nextIndex]?.focus();
+        }
       }
     },
   };
@@ -65,6 +93,7 @@ function interactiveProps(index, active, setActive, ariaLabel) {
 export function ProgressBarChart({ buckets, metric, metricLabel }) {
   const [ref, width] = useWidth();
   const [active, setActive] = useState(null);
+  const itemRefs = useRef([]);
 
   useEffect(() => {
     setActive(null);
@@ -90,6 +119,7 @@ export function ProgressBarChart({ buckets, metric, metricLabel }) {
   const peak = scaled.indexOf(Math.max(...scaled));
   const unit = metric === 'duration_seconds' ? 'Minutes' : metricLabel;
   const activeBucket = active !== null ? buckets[active] : null;
+  const isInteractive = i => scaled[i] > 0;
 
   return (
     <div ref={ref} className="chart">
@@ -117,14 +147,23 @@ export function ProgressBarChart({ buckets, metric, metricLabel }) {
           const bottom = margin.top + plotH;
           const valueLabel = metricValue(metric, bucket[metric]);
           const interactivity = value > 0
-            ? interactiveProps(index, active, setActive, `${bucket.label}: ${metricLabel} ${valueLabel}`)
+            ? interactiveProps({
+              index,
+              active,
+              setActive,
+              ariaLabel: `${bucket.label}: ${metricLabel} ${valueLabel}`,
+              itemRefs,
+              isInteractive,
+              length: buckets.length,
+            })
             : { onPointerEnter: () => setActive(index) };
           return (
-            <g key={bucket.key} {...interactivity}>
+            <g key={`${metric}-${bucket.key}`} {...interactivity}>
               <rect x={margin.left + band * index} y={margin.top} width={band} height={plotH} fill="transparent" />
               {value > 0 && (
                 <path
-                  className={active === index ? 'chart-bar chart-bar-hover' : 'chart-bar'}
+                  className={active === index ? 'chart-bar chart-bar-hover chart-bar-enter' : 'chart-bar chart-bar-enter'}
+                  style={{ animationDelay: `${Math.min(index * 16, 180)}ms` }}
                   d={`M${left},${bottom} V${bottom - barH + radius} Q${left},${bottom - barH} ${left + radius},${bottom - barH} H${left + barW - radius} Q${left + barW},${bottom - barH} ${left + barW},${bottom - barH + radius} V${bottom} Z`}
                 />
               )}
@@ -198,6 +237,7 @@ function buildHeartRateTooltipLines(point, check, plan) {
 export function HeartRateChart({ points = [], plan = null }) {
   const [ref, width] = useWidth();
   const [active, setActive] = useState(null);
+  const pointRefs = useRef([]);
 
   useEffect(() => {
     setActive(null);
@@ -339,10 +379,21 @@ export function HeartRateChart({ points = [], plan = null }) {
           const by = hasBefore ? y(point.before_bpm) : null;
           const ay = hasAfter ? y(point.after_bpm) : null;
 
+          const hrProps = interactiveProps({
+            index,
+            active,
+            setActive,
+            ariaLabel: buildHeartRateAria(point, check),
+            itemRefs: pointRefs,
+            isInteractive: () => true,
+            length: points.length,
+          });
           return (
             <g
               key={point.id ?? `${point.recorded_at ?? point.date}-${index}`}
-              {...interactiveProps(index, active, setActive, buildHeartRateAria(point, check))}
+              {...hrProps}
+              className="chart-bar-wrap hr-point-enter"
+              style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
             >
               <rect x={margin.left + band * index} y={margin.top} width={band} height={plotH} fill="transparent" />
               {active === index && (

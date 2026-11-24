@@ -129,7 +129,7 @@ export function PatientMessages() {
       {bot?.address && (
         <div className="alert alert-info">
           <p>
-            <Icon name="mail" /> You can also email <strong>MotionTrack Care Bot</strong> (
+            <Icon name="mail" /> You can also email <strong>Motion Track Care Bot</strong> (
             <a href={`mailto:${encodeURIComponent(bot.address)}`}>
               <strong className="break">{bot.address}</strong>
             </a>

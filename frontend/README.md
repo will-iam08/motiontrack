@@ -1,8 +1,8 @@
-# MotionTrack website
+# Motion Track website
 
-React + Vite frontend for the [MotionTrack backend](../backend/README.md). It has three entry points:
+React + Vite frontend for the [Motion Track backend](../backend/README.md). It has three entry points:
 
-- **Patient:** `http://localhost:5173/` — register or sign in, view the **Overview** dashboard fed by the Motion Log
+- **Patient:** `http://localhost:5173/` — register or sign in, view the **Overview** dashboard fed by the Motion Track
   iPhone app (auto-collapsing setup card once sets are synced, with 1-click copyable server URL, doctor's care plan, synced
   totals, recent sets with duration and care-plan badges, and a read-only Live Workout HUD during active app workouts),
   browse **History** (CSV export and clinical print report), inspect **Progress** charts (completed exercises, reps, active

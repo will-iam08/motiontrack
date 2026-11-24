@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../auth.jsx';
 import { chipCounts, filterPatients } from '../lib/filters.js';
 import { formatDateTime } from '../lib/format.js';
+import { AnimatedNumber } from './AnimatedNumber.jsx';
 import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, ScreenHeading, SearchField } from './common.jsx';
 import { MessageInbox } from './MessageInbox.jsx';
 import { PatientDetail } from './PatientDetail.jsx';
@@ -92,19 +93,19 @@ export function DoctorApp() {
             <div className="stat-strip" role="group" aria-label="Summary">
               <div className="tile">
                 <p className="tile-label"><Icon name="users" />Assigned patients</p>
-                <p className="tile-value">{patients.length}</p>
+                <p className="tile-value"><AnimatedNumber value={patients.length} /></p>
               </div>
               <div className="tile">
                 <p className="tile-label"><Icon name="pulse" />Live now</p>
-                <p className="tile-value">{liveCount}</p>
+                <p className="tile-value"><AnimatedNumber value={liveCount} /></p>
               </div>
               <div className="tile">
                 <p className="tile-label"><Icon name="alert" />Needs attention</p>
-                <p className="tile-value">{attentionCount}</p>
+                <p className="tile-value"><AnimatedNumber value={attentionCount} /></p>
               </div>
               <div className="tile">
                 <p className="tile-label"><Icon name="mail" />Unread messages</p>
-                <p className="tile-value">{unreadMessagesCount}</p>
+                <p className="tile-value"><AnimatedNumber value={unreadMessagesCount} /></p>
               </div>
             </div>
           )}

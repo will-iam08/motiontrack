@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { describeError } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Icon, ScreenHeading } from './common.jsx';
+import { InteractiveShowcase } from './InteractiveShowcase.jsx';
 
 const PORTALS = {
   patient: {
     eyebrow: 'Patient portal',
     title: 'Your home exercise log',
-    lead: 'Review sets synced from the Motion Log iPhone app, follow your doctor’s rep and heart-rate targets, and track your progress.',
+    lead: 'Review sets synced from the Motion Track iPhone app, follow your doctor’s rep and heart-rate targets, and track your progress.',
     heading: 'Sign in',
     intro: 'Patients sign in here with their email and password.',
     features: [
       { icon: 'heart', title: 'Heart rate before and after', text: 'Take a reading before your first rep and another straight after your last.' },
-      { icon: 'device', title: 'Synced from the Motion Log app', text: 'Connect your tracker over Bluetooth in Motion Log, and finished sets upload here automatically.' },
+      { icon: 'device', title: 'Synced from the Motion Track app', text: 'Connect your tracker over Bluetooth in Motion Track, and finished sets upload here automatically.' },
       { icon: 'clipboard', title: 'Shared with your doctor', text: 'Your completed sets, care plan and questions stay in one place for your doctor to review.' },
     ],
   },
@@ -115,114 +116,124 @@ export function AuthScreen({ portal = 'patient' }) {
   }
 
   return (
-    <div className="auth-shell">
-      <div className="auth-aside">
-        <p className="auth-eyebrow"><Icon name={portal === 'admin' ? 'shield' : 'pulse'} />{copy.eyebrow}</p>
-        <p className="auth-title">{copy.title}</p>
-        <p className="auth-lead">{copy.lead}</p>
-        <ul className="feature-list">
-          {copy.features.map(feature => (
-            <li key={feature.title}>
-              <span className="feature-icon"><Icon name={feature.icon} /></span>
-              <span><strong>{feature.title}</strong><span className="hint block">{feature.text}</span></span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <section className="card auth-card" aria-labelledby="auth-heading">
-        {notice && <p className="alert alert-info" role="status">{notice}</p>}
-        <div id="auth-heading">
-          <ScreenHeading level={2} key={mode} autoFocus={hasSwitchedMode}>{registering ? 'Create your account' : copy.heading}</ScreenHeading>
-        </div>
-        <p>
-          {registering ? 'Create a patient account to record your movement exercises.' : copy.intro}
-        </p>
-        <form onSubmit={onSubmit} noValidate>
-          {registering && (
-            <div className="field">
-              <label htmlFor="auth-name">Your name</label>
-              <input
-                id="auth-name"
-                type="text"
-                autoComplete="name"
-                maxLength={80}
-                value={name}
-                onChange={e => { setName(e.target.value); if (invalidField === 'name') setInvalidField(null); }}
-                aria-invalid={invalidField === 'name' ? true : undefined}
-                aria-describedby={invalidField === 'name' && error ? 'auth-error' : undefined}
-                required
-              />
+    <>
+      <div className="auth-shell">
+        <div className="auth-aside">
+          <p className="auth-eyebrow"><Icon name={portal === 'admin' ? 'shield' : 'pulse'} />{copy.eyebrow}</p>
+          <p className="auth-title">{copy.title}</p>
+          <p className="auth-lead">{copy.lead}</p>
+          <ul className="feature-list">
+            {copy.features.map(feature => (
+              <li key={feature.title}>
+                <span className="feature-icon"><Icon name={feature.icon} /></span>
+                <span><strong>{feature.title}</strong><span className="hint block">{feature.text}</span></span>
+              </li>
+            ))}
+          </ul>
+          {patient && (
+            <div className="hero-actions">
+              <a className="button hero-demo-link" href="#interactive-demo">
+                <Icon name="play" />Try interactive wearable demo ↓
+              </a>
             </div>
           )}
-          <div className="field">
-            <label htmlFor="auth-email">Email address</label>
-            <input
-              id="auth-email"
-              type="email"
-              autoComplete="email"
-              maxLength={254}
-              value={email}
-              onChange={e => { setEmail(e.target.value); if (invalidField === 'email') setInvalidField(null); }}
-              aria-invalid={invalidField === 'email' ? true : undefined}
-              aria-describedby={invalidField === 'email' && error ? 'auth-error' : undefined}
-              required
-            />
+        </div>
+        <section className="card auth-card" aria-labelledby="auth-heading">
+          {notice && <p className="alert alert-info" role="status">{notice}</p>}
+          <div id="auth-heading">
+            <ScreenHeading level={2} key={mode} autoFocus={hasSwitchedMode}>{registering ? 'Create your account' : copy.heading}</ScreenHeading>
           </div>
-          <div className="field">
-            <label htmlFor="auth-password">Password</label>
-            <div className="password-row">
+          <p>
+            {registering ? 'Create a patient account to record your movement exercises.' : copy.intro}
+          </p>
+          <form onSubmit={onSubmit} noValidate>
+            {registering && (
+              <div className="field">
+                <label htmlFor="auth-name">Your name</label>
+                <input
+                  id="auth-name"
+                  type="text"
+                  autoComplete="name"
+                  maxLength={80}
+                  value={name}
+                  onChange={e => { setName(e.target.value); if (invalidField === 'name') setInvalidField(null); }}
+                  aria-invalid={invalidField === 'name' ? true : undefined}
+                  aria-describedby={invalidField === 'name' && error ? 'auth-error' : undefined}
+                  required
+                />
+              </div>
+            )}
+            <div className="field">
+              <label htmlFor="auth-email">Email address</label>
               <input
-                id="auth-password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete={registering ? 'new-password' : 'current-password'}
-                maxLength={128}
-                value={password}
-                onChange={e => { setPassword(e.target.value); if (invalidField === 'password') setInvalidField(null); }}
-                aria-invalid={invalidField === 'password' ? true : undefined}
-                aria-describedby={invalidField === 'password' && error ? 'auth-password-hint auth-error' : 'auth-password-hint'}
+                id="auth-email"
+                type="email"
+                autoComplete="email"
+                maxLength={254}
+                value={email}
+                onChange={e => { setEmail(e.target.value); if (invalidField === 'email') setInvalidField(null); }}
+                aria-invalid={invalidField === 'email' ? true : undefined}
+                aria-describedby={invalidField === 'email' && error ? 'auth-error' : undefined}
                 required
               />
-              <button
-                type="button"
-                className="button button-small password-toggle"
-                aria-pressed={showPassword}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                onClick={() => setShowPassword(visible => !visible)}
-              >
-                <Icon name={showPassword ? 'eyeOff' : 'eye'} />
-                <span>{showPassword ? 'Hide' : 'Show'}</span>
-              </button>
             </div>
-            <p className="hint" id="auth-password-hint">Passwords are 12 to 128 characters long.</p>
-          </div>
-          {error && (
-            <p id="auth-error" className="alert alert-error" role="alert">
-              <span aria-hidden="true">⚠ </span>{error}
-              {wrongPortal && (
-                <> <a href={wrongPortal.href}>{wrongPortal.label}</a></>
-              )}
+            <div className="field">
+              <label htmlFor="auth-password">Password</label>
+              <div className="password-row">
+                <input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={registering ? 'new-password' : 'current-password'}
+                  maxLength={128}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); if (invalidField === 'password') setInvalidField(null); }}
+                  aria-invalid={invalidField === 'password' ? true : undefined}
+                  aria-describedby={invalidField === 'password' && error ? 'auth-password-hint auth-error' : 'auth-password-hint'}
+                  required
+                />
+                <button
+                  type="button"
+                  className="button button-small password-toggle"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword(visible => !visible)}
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+                  <span>{showPassword ? 'Hide' : 'Show'}</span>
+                </button>
+              </div>
+              <p className="hint" id="auth-password-hint">Passwords are 12 to 128 characters long.</p>
+            </div>
+            {error && (
+              <p id="auth-error" className="alert alert-error" role="alert">
+                <span aria-hidden="true">⚠ </span>{error}
+                {wrongPortal && (
+                  <> <a href={wrongPortal.href}>{wrongPortal.label}</a></>
+                )}
+              </p>
+            )}
+            <button type="submit" className="button button-primary button-wide" disabled={busy}>
+              {busy ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}
+            </button>
+          </form>
+          {patient && (
+            <p className="switch-mode">
+              {registering ? 'Already have an account?' : 'New patient?'}{' '}
+              <button type="button" className="button button-link" onClick={() => switchMode(registering ? 'login' : 'register')}>
+                {registering ? 'Sign in instead' : 'Create an account'}
+              </button>
             </p>
           )}
-          <button type="submit" className="button button-primary button-wide" disabled={busy}>
-            {busy ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}
-          </button>
-        </form>
-        {patient && (
-          <p className="switch-mode">
-            {registering ? 'Already have an account?' : 'New patient?'}{' '}
-            <button type="button" className="button button-link" onClick={() => switchMode(registering ? 'login' : 'register')}>
-              {registering ? 'Sign in instead' : 'Create an account'}
-            </button>
-          </p>
-        )}
-        <div className="auth-footer">
-          <p className="switch-mode portal-links">
-            {portal !== 'patient' && <a className="portal-link" href="/"><Icon name="user" />Patient sign-in</a>}
-            {portal !== 'doctor' && <a className="portal-link" href="/doctor"><Icon name="users" />Doctor sign-in</a>}
-          </p>
-          <p className="hint"><Icon name="lock" /> For your privacy you are signed out when this page is closed or reloaded.</p>
-        </div>
-      </section>
-    </div>
+          <div className="auth-footer">
+            <p className="switch-mode portal-links">
+              {portal !== 'patient' && <a className="portal-link" href="/"><Icon name="user" />Patient sign-in</a>}
+              {portal !== 'doctor' && <a className="portal-link" href="/doctor"><Icon name="users" />Doctor sign-in</a>}
+            </p>
+            <p className="hint"><Icon name="lock" /> For your privacy you are signed out when this page is closed or reloaded.</p>
+          </div>
+        </section>
+      </div>
+      {patient && <InteractiveShowcase />}
+    </>
   );
 }

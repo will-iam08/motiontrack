@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx';
 import { assignmentMaps, isAssigned, parseDoctorForm } from '../lib/admin.js';
 import { chipCounts, filterDoctors, filterPatients, matchesQuery } from '../lib/filters.js';
 import { formatDateTime } from '../lib/format.js';
+import { AnimatedNumber } from './AnimatedNumber.jsx';
 import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, ScreenHeading, SearchField, TabNav } from './common.jsx';
 import { PatientDetail } from './PatientDetail.jsx';
 
@@ -56,7 +57,9 @@ function Tile({ icon, label, value, note }) {
   return (
     <div className="tile">
       <p className="tile-label"><Icon name={icon} />{label}</p>
-      <p className="tile-value">{value}</p>
+      <p className="tile-value">
+        {typeof value === 'number' ? <AnimatedNumber value={value} /> : value}
+      </p>
       {note && <p className="tile-note">{note}</p>}
     </div>
   );
@@ -70,7 +73,7 @@ function Overview({ overview, onOpenPatient, onAssignPatient }) {
   return (
     <section aria-labelledby="overview-heading">
       <div id="overview-heading"><ScreenHeading>Overview</ScreenHeading></div>
-      <p>Everything recorded on this MotionTrack server, across all patients and doctors.</p>
+      <p>Everything recorded on this Motion Track server, across all patients and doctors.</p>
       <div className="stat-strip admin-stats" role="group" aria-label="Summary">
         <Tile icon="users" label="Patients" value={stats.patients} note={`${unassigned.length} without a doctor`} />
         <Tile icon="shield" label="Doctors" value={stats.doctors} note={`${stats.assignments} assignment${stats.assignments === 1 ? '' : 's'}`} />
@@ -516,13 +519,22 @@ export function AdminApp() {
   const { api } = useAuth();
   const { overview, error, reload } = useOverview(api);
   const [view, setView] = useState('overview');
+  const [tabDir, setTabDir] = useState('none');
   const [selectedId, setSelectedId] = useState(null);
   const [quickAssignPatientId, setQuickAssignPatientId] = useState('');
 
+  const switchView = useCallback(next => {
+    if (next === view) return;
+    const prevIdx = VIEWS.findIndex(item => item.id === view);
+    const nextIdx = VIEWS.findIndex(item => item.id === next);
+    setTabDir(nextIdx > prevIdx ? 'forward' : 'backward');
+    setView(next);
+  }, [view]);
+
   const openAssign = useCallback((patientId = '') => {
     setQuickAssignPatientId(patientId);
-    setView('assignments');
-  }, []);
+    switchView('assignments');
+  }, [switchView]);
 
   if (selectedId) {
     return (
@@ -536,9 +548,11 @@ export function AdminApp() {
     );
   }
 
+  const panelClass = tabDir === 'forward' ? 'tab-panel-forward' : tabDir === 'backward' ? 'tab-panel-backward' : undefined;
+
   return (
     <>
-      <TabNav views={VIEWS} current={view} onChange={setView} label="Admin sections" />
+      <TabNav views={VIEWS} current={view} onChange={switchView} label="Admin sections" />
       <div className="card">
         {error && overview && (
           <p className="alert alert-warning" role="status">
@@ -547,17 +561,21 @@ export function AdminApp() {
         )}
         {error && !overview && <ErrorMessage error={error} onRetry={reload} />}
         {!overview && !error && <Loading label="Loading the overview…" />}
-        {overview && view === 'overview' && <Overview overview={overview} onOpenPatient={setSelectedId} onAssignPatient={openAssign} />}
-        {overview && view === 'patients' && <AllPatients overview={overview} onOpenPatient={setSelectedId} />}
-        {overview && view === 'assignments' && (
-          <Assignments
-            overview={overview}
-            reload={reload}
-            initialPatientId={quickAssignPatientId}
-            onClearInitialPatient={() => setQuickAssignPatientId('')}
-          />
+        {overview && (
+          <div key={view} className={panelClass}>
+            {view === 'overview' && <Overview overview={overview} onOpenPatient={setSelectedId} onAssignPatient={openAssign} />}
+            {view === 'patients' && <AllPatients overview={overview} onOpenPatient={setSelectedId} />}
+            {view === 'assignments' && (
+              <Assignments
+                overview={overview}
+                reload={reload}
+                initialPatientId={quickAssignPatientId}
+                onClearInitialPatient={() => setQuickAssignPatientId('')}
+              />
+            )}
+            {view === 'doctors' && <DoctorAccounts overview={overview} reload={reload} />}
+          </div>
         )}
-        {overview && view === 'doctors' && <DoctorAccounts overview={overview} reload={reload} />}
       </div>
     </>
   );

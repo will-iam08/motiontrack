@@ -53,7 +53,7 @@ export default function App() {
         <div className="site-header-inner">
           <div className="brand">
             <span className="brand-mark" onClick={handleBrandClick}><Icon name="pulse" /></span>
-            <h1>MotionTrack</h1>
+            <h1>Motion Track</h1>
             <p className="portal-label">{PORTAL_LABELS[portal]}</p>
           </div>
           {user && (

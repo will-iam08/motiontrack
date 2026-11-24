@@ -12,7 +12,7 @@ export function onboardingSteps({ hasAccount = true, syncedSets = 0, completedEx
     },
     {
       id: 'app',
-      title: 'Sign in on the Motion Log app',
+      title: 'Sign in on the Motion Track app',
       done: synced,
       detail: 'Connect your tracker over Bluetooth on your iPhone and upload your first set.',
     },

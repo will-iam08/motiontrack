@@ -1,4 +1,4 @@
-# MotionTrack demo: setup and script
+# Motion Track demo: setup and script
 
 This is the exact local setup and the course demo, in two versions: **A** with the synthetic test device (no
 hardware) and **B** with the real ESP32. Run all commands from the repository root unless a step says otherwise.
@@ -18,8 +18,8 @@ the website tests and the host-side firmware tests:
 
 **Not tested on hardware** (expect to verify on a physical device):
 
-- real Bluetooth Low Energy link between the ESP32 and a physical iPhone running the Motion Log app;
-- real HTTPS uploads from the physical Motion Log iPhone app to the backend;
+- real Bluetooth Low Energy link between the ESP32 and a physical iPhone running the Motion Track app;
+- real HTTPS uploads from the physical Motion Track iPhone app to the backend;
 - the MPU6050 rep counting thresholds and MAX30102 heart-rate check-in on the sensor;
 - the OLED screens and the sensor mounting.
 
@@ -88,11 +88,11 @@ The numbers (targets 5 and 4 reps) keep the demo short; any target from 1 to 50 
 Open `http://localhost:5173/`, choose **Create an account**, and register `patient@example.com` with a password of
 12 or more characters.
 
-Pass: you are signed in and see the four tabs: **Overview**, **History**, **Progress** and **Messages** (the Overview tab shows the **Record exercises with the Motion Log app** card with your copyable server URL).
+Pass: you are signed in and see the four tabs: **Overview**, **History**, **Progress** and **Messages** (the Overview tab shows the **Record exercises with the Motion Track app** card with your copyable server URL).
 
-### Step 2: sync from the Motion Log app (or simulate an app upload)
+### Step 2: sync from the Motion Track app (or simulate an app upload)
 
-In the **Motion Log** iPhone app (`mobile/`):
+In the **Motion Track** iPhone app (`mobile/`):
 
 1. Open **My tracker** and tap **Sign in**, then enter the server URL from your **Overview** card along with your patient email and password (stored in the iPhone Keychain for 24 hours; Bluetooth workouts also work offline and queue locally).
 2. Connect your ESP32 over Bluetooth (`Scan for tracker`).
@@ -312,7 +312,7 @@ badge and words, whether each exercise **Met** the prescribed reps (or was **Bel
 after was **In range**, **Above** or **Below** the target.
 
 Sign in as the patient. Pass: the **Overview** tab shows a **From Your Doctor** card with the note, the reps per exercise
-and the target range, and synced rows in **History** include the Care plan badges (**Met**/**Below**, **In range**/**Above**/**Below**). Signing in inside the Motion Log iPhone app loads that same care plan via `GET /api/plan` and pre-fills the rep target stepper (1–50).
+and the target range, and synced rows in **History** include the Care plan badges (**Met**/**Below**, **In range**/**Above**/**Below**). Signing in inside the Motion Track iPhone app loads that same care plan via `GET /api/plan` and pre-fills the rep target stepper (1–50).
 
 ### Step 14: a patient question in the doctor's inbox
 

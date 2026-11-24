@@ -49,7 +49,7 @@ export function PrintHeader({ printContext, heading, plan }) {
   const planSummary = planPrintSummary(plan);
   return (
     <div className="print-only print-header">
-      <p className="eyebrow">MotionTrack Clinical Report</p>
+      <p className="eyebrow">Motion Track Clinical Report</p>
       {printContext.patientName ? (
         <p>
           <strong>Patient:</strong> {printContext.patientName}
@@ -124,7 +124,7 @@ export function SessionHistory({
     setPendingPrint(true);
   }
   const sourceText = session => {
-    if (session.source === 'app' || !session.device_id) return ' · Motion Log app';
+    if (session.source === 'app' || !session.device_id) return ' · Motion Track app';
     if (devices) return ` · ${devices.find(device => device.id === session.device_id)?.name ?? 'Wi-Fi device'}`;
     return ' · Wi-Fi device';
   };
@@ -176,7 +176,7 @@ export function SessionHistory({
         </p>
       )}
       {data && data.total === 0 && chip === 'all' && <p className="empty">
-          {owner === 'You have' ? 'You have no workout sessions yet. Record your first set in the Motion Log iPhone app.' : `${owner} no workout sessions yet.`}
+          {owner === 'You have' ? 'You have no workout sessions yet. Record your first set in the Motion Track iPhone app.' : `${owner} no workout sessions yet.`}
         </p>}
       {data && data.total > 0 && (
         <>

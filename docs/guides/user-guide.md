@@ -1,4 +1,4 @@
-# Using the MotionTrack website
+# Using the Motion Track website
 
 This guide walks through the website screen by screen: first for patients, then for doctors, then for admins and
 the person who runs the server and sets up doctor accounts. For installing and starting the servers, see the
@@ -28,22 +28,22 @@ workout session that is still running.
 
 Next time, sign in with the same email and password on the **Sign in** form.
 
-### 2. Sign in on the Motion Log iPhone app
+### 2. Sign in on the Motion Track iPhone app
 
-The ESP32 tracker talks over Bluetooth Low Energy to the **Motion Log** iPhone app instead of connecting directly over Wi-Fi.
+The ESP32 tracker talks over Bluetooth Low Energy to the **Motion Track** iPhone app instead of connecting directly over Wi-Fi.
 
-1. On your iPhone, open **Motion Log** and switch to **My tracker**.
-2. Tap **Sign in** (or **Account**), copy the **Server URL for the Motion Log app** shown on your **Overview** tab, and sign in with your patient email and password.
+1. On your iPhone, open **Motion Track** and switch to **My tracker**.
+2. Tap **Sign in** (or **Account**), copy the **Server URL for the Motion Track app** shown on your **Overview** tab, and sign in with your patient email and password.
 3. Your app stores the 24-hour session token in the iOS Keychain, pulls down your doctor's care plan, and pre-fills prescribed rep targets.
 
 ### 3. Record and sync a workout set
 
-1. In **Motion Log**, connect your ESP32 over Bluetooth (`Scan for tracker`).
+1. In **Motion Track**, connect your ESP32 over Bluetooth (`Scan for tracker`).
 2. Choose **Biceps curl**, **Shoulder press**, or **Back row** and set a target from 1 to 50 reps.
 3. Follow the heart-rate check-ins before and after counting reps (or tap **Skip heart-rate check** / **End workout** if needed).
-4. Once finished or stopped, Motion Log queues the set locally and uploads it to your web record. If you are offline or signed out, workouts are saved in the queue and uploaded with backoff when signal returns and you are signed in.
+4. Once finished or stopped, Motion Track queues the set locally and uploads it to your web record. If you are offline or signed out, workouts are saved in the queue and uploaded with backoff when signal returns and you are signed in.
 
-While a set is in progress and online, **Overview** shows an optional **Live from Motion Log** banner (and marks it if no update arrives within 5 seconds: **Device not responding (last update N s ago)**).
+While a set is in progress and online, **Overview** shows an optional **Live from Motion Track** banner (and marks it if no update arrives within 5 seconds: **Device not responding (last update N s ago)**).
 
 Legacy **My devices** Wi-Fi token management is retired from the patient interface; previously recorded Wi-Fi workouts stay intact in **History** and **Progress**.
 

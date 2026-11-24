@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./docs/assets/icon.png" alt="MotionTrack Icon" width="88" height="88" />
+<img src="./docs/assets/icon.png" alt="Motion Track Icon" width="88" height="88" />
 
-# MotionTrack
+# Motion Track
 
 **A forearm wearable, iOS companion, and clinical review dashboard for counting exercise reps and heart rate between supervised sessions.**
 
@@ -18,7 +18,7 @@
 [Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
 
 <p>
-  <img src="./docs/assets/wearable-hero.png" alt="MotionTrack forearm wearable enclosure CAD model with OLED rep counter" width="780" />
+  <img src="./docs/assets/wearable-hero.png" alt="Motion Track forearm wearable enclosure CAD model with OLED rep counter" width="780" />
 </p>
 
 <sup><em>Group 65 "Diamond Ends" Fusion CAD forearm enclosure (OLED readout illustrative).</em></sup>
@@ -31,10 +31,10 @@
 
 Between supervised cardiac/rehabilitation sessions (such as CCCARE clinics), participants have to maintain proper form, count repetitions mid-set, and remember totals afterward. If a set goes unrecorded, clinicians lack accurate adherence history at follow-up.
 
-**MotionTrack** captures three concrete facts per set **locally on a forearm wearable** and syncs them to a review dashboard:
+**Motion Track** captures three concrete facts per set **locally on a forearm wearable** and syncs them to a review dashboard:
 1. **Exercise type** (`Biceps curl / Arm Curl`, `Shoulder press`, `Back row`, 1–50 target reps)
 2. **Completed repetitions** (counted live on an on-device OLED)
-3. **Elapsed time + before/after heart rate (BPM)** measured via the **Motion Log** iOS camera pulse estimator or pulse sensor
+3. **Elapsed time + before/after heart rate (BPM)** measured via the **Motion Track** iOS camera pulse estimator or pulse sensor
 
 An exercise record is marked **Complete** only when all target reps finish and both heart-rate readings exist (otherwise **Incomplete**). Retried HTTPS uploads from the phone are idempotent (`client_id`) and never double-count. The web app exposes **Patient** (`/`), **Doctor** (`/doctor`), and **Admin** (`/admin`) views (mapped to `participant`, `staff`, and `admin` in the backend API, CLI, and database).
 
@@ -43,7 +43,7 @@ An exercise record is marked **Complete** only when all target reps finish and b
 ## Hardware & Rep Detection
 
 <div align="center">
-  <img src="./docs/assets/hardware-architecture.png" alt="MotionTrack hardware wiring diagram connecting MPU6050, ESP32 DOIT DevKit V1, SSD1306 OLED, 9V power regulator, and iPhone BLE" width="820" />
+  <img src="./docs/assets/hardware-architecture.png" alt="Motion Track hardware wiring diagram connecting MPU6050, ESP32 DOIT DevKit V1, SSD1306 OLED, 9V power regulator, and iPhone BLE" width="820" />
 </div>
 
 ### Wearable Hardware Architecture
@@ -55,7 +55,7 @@ An exercise record is marked **Complete** only when all target reps finish and b
 | **Wearable Display** | `SSD1306 OLED` | Connected via I²C (`GPIO 21 SDA`, `GPIO 22 SCL`); displays prompts, live count, and set results |
 | **Power Rail** | `9 V` battery → Breadboard regulator | Regulated `+3.3 V` and common `GND` feeding ESP32, MPU6050, and SSD1306 OLED |
 | **Enclosure** | 3D-printed *Diamond Ends* case | Secures the IMU cleanly along the forearm while keeping the OLED glanceable mid-set |
-| **Wireless Link** | Bluetooth Low Energy (BLE) | Exchanges workout config and live counts with `Motion Log`; ESP32 keeps counting if BLE drops |
+| **Wireless Link** | Bluetooth Low Energy (BLE) | Exchanges workout config and live counts with `Motion Track`; ESP32 keeps counting if BLE drops |
 
 ### 3-Stage Biceps Curl & Exercise Detection
 To avoid counting accidental reaches or pausing mid-lift, rep state runs directly on the ESP32 (`TiltRepCounter.h` / `WristRepCounter.h`):
@@ -68,25 +68,25 @@ To avoid counting accidental reaches or pausing mid-lift, rep state runs directl
 ## System Architecture
 
 <div align="center">
-  <img src="./docs/assets/software-architecture.png" alt="MotionTrack software data flow from ESP32 BLE calibration and rep counting to Motion Log HTTPS sync, Express API, and React dashboard" width="820" />
+  <img src="./docs/assets/software-architecture.png" alt="Motion Track software data flow from ESP32 BLE calibration and rep counting to Motion Track HTTPS sync, Express API, and React dashboard" width="820" />
 </div>
 
-### iPhone Companion (`Motion Log`) & Camera Pulse Check
+### Motion Track iPhone Companion & Camera Pulse Check
 
 <p align="center">
-  <img src="./docs/assets/mobile-pulse.png" alt="Motion Log SwiftUI iPhone app measuring fingertip camera PPG pulse before workout" width="520" />
+  <img src="./docs/assets/mobile-pulse.png" alt="Motion Track SwiftUI iPhone app measuring fingertip camera PPG pulse before workout" width="520" />
 </p>
 
 - **Bluetooth Workout Session (`mobile/MotionLog/`):** Calibrates the forearm sensor while resting, selects an exercise & rep target, mirrors live counts over BLE, and lets users finish early without losing completed reps.
 - **Camera PPG Pulse Estimation:** Measures fingertip pulse waveform before and after sets (supporting front-camera + screen light on iPhone 17 Pro / Pro Max, or rear lens; see [`mobile/README.md#iphone-camera-pulse`](mobile/README.md#iphone-camera-pulse)).
-- **Offline Sync Queue + Dual Storage Backend:** `Motion Log` queues completed sets offline and retries idempotently over HTTPS to the Node + Express backend, storing records in local SQLite (`backend/data/ece198.sqlite`) or hosted Turso libSQL (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
+- **Offline Sync Queue + Dual Storage Backend:** `Motion Track` queues completed sets offline and retries idempotently over HTTPS to the Node + Express backend, storing records in local SQLite (`backend/data/ece198.sqlite`) or hosted Turso libSQL (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
 - **Legacy Wi-Fi Compatibility:** Direct ESP32-to-server Wi-Fi sketches under [`firmware/`](firmware/README.md) remain intact to preserve legacy device records alongside the unified Bluetooth + iPhone architecture in [`mobile/Firmware/`](mobile/setup-guide.md).
 
 ### Repository Layout
 
 ```text
 motiontrack/
-├── mobile/                 # SwiftUI iPhone app (Motion Log), BLE ESP32 firmware & accuracy/Swift tests
+├── mobile/                 # SwiftUI iPhone app (Motion Track), BLE ESP32 firmware & accuracy/Swift tests
 │   ├── MotionLog/          # BLE Tracker, Camera PPG (PulseCamera/PulseSignal) & Offline SyncCore
 │   ├── Firmware/           # PlatformIO BLE firmware + forearm/wrist rep counters
 │   └── tests/              # C++ rep accuracy benchmarks & Swift workout/pulse checks (run.sh)
@@ -130,7 +130,7 @@ motiontrack/
 | **Doctor — Care Plans & Inbox (`/doctor`)** | **Admin — System Overview (`/admin`)** |
 | <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor console displaying patient message inbox and live exercise status" width="100%" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin overview showing patient, doctor, session, device, and unread message metrics" width="100%" /> |
 
-- **Patient (`/`):** Live Workout HUD (`Before BPM → Counting → After BPM → Done` progress bar + rep counter) during active `Motion Log` sessions, auto-collapsed iPhone setup with 1-click copyable Server URL once synced, care plan badges and set durations on recent sets, doctor reply badge on Messages, and Progress charts for completed exercises, reps, **Active time**, and **Before vs. After Heart Rate** against the prescribed target BPM band.
+- **Patient (`/`):** Live Workout HUD (`Before BPM → Counting → After BPM → Done` progress bar + rep counter) during active `Motion Track` sessions, auto-collapsed iPhone setup with 1-click copyable Server URL once synced, care plan badges and set durations on recent sets, doctor reply badge on Messages, and Progress charts for completed exercises, reps, **Active time**, and **Before vs. After Heart Rate** against the prescribed target BPM band.
 - **Doctor (`/doctor`):** 4-tile clinical cohort summary and triage filter chips (`Live now`, `Needs attention`, `Unread messages`, `Inactive (7+ d)`), collapsible message inbox replies with replace warnings, and a unified patient record view combining the Live Workout HUD, Care Plan editor (with quick target presets and unsaved-changes leave guard), Progress & Heart Rate charts, patient-filtered messages, and printable clinical history.
 - **Admin (`/admin`) & Auth:** Quick-assign links for unassigned patients on Overview and Assignments, searchable patient/assignment/doctor lists, Show/Hide password toggles, and direct wrong-portal recovery links on sign-in.
 

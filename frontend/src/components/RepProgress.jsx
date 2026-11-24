@@ -3,6 +3,7 @@ import { useAuth } from '../auth.jsx';
 import { bpmCheck, hasBpmTarget } from '../lib/carePlan.js';
 import { formatDateTime, formatDurationWords } from '../lib/format.js';
 import { buildBuckets, filterDaily, filterHeartRate, METRICS, RANGES, sumRows } from '../lib/progress.js';
+import { AnimatedNumber } from './AnimatedNumber.jsx';
 import { HeartRateChart, ProgressBarChart } from './Charts.jsx';
 import { ErrorMessage, Icon, Loading, PlanCheck, ScreenHeading } from './common.jsx';
 
@@ -108,8 +109,8 @@ export function RepProgress({
       {view && (
         <>
           <div className="tiles" role="group" aria-label={`Totals for ${rangeLabel}`}>
-            <div className="tile"><p className="tile-label"><Icon name="check" />Completed exercises</p><p className="tile-value">{view.totals.workouts}</p></div>
-            <div className="tile"><p className="tile-label"><Icon name="dumbbell" />Total repetitions</p><p className="tile-value">{view.totals.repetitions}</p></div>
+            <div className="tile"><p className="tile-label"><Icon name="check" />Completed exercises</p><p className="tile-value"><AnimatedNumber value={view.totals.workouts} /></p></div>
+            <div className="tile"><p className="tile-label"><Icon name="dumbbell" />Total repetitions</p><p className="tile-value"><AnimatedNumber value={view.totals.repetitions} /></p></div>
             <div className="tile"><p className="tile-label"><Icon name="clock" />Active time</p><p className="tile-value">{formatDurationWords(view.totals.duration_seconds ?? 0)}</p></div>
           </div>
           {view.totals.workouts === 0 ? (
