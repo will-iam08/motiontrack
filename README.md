@@ -99,10 +99,10 @@ For all three exercises, strap the `MPU6050` snugly **just above the wrist** of 
 
 ```text
 motiontrack/
-├── mobile/                 # SwiftUI iPhone app (Motion Track), BLE ESP32 firmware & accuracy/Swift tests
+├── mobile/                 # SwiftUI iPhone app, BLE ESP32 firmware & host tests
 │   ├── MotionLog/          # BLE Tracker, Camera PPG (PulseCamera/PulseSignal) & Offline SyncCore
 │   ├── Firmware/           # PlatformIO BLE firmware + forearm/wrist rep counters
-│   └── tests/              # C++ rep accuracy benchmarks & Swift workout/pulse checks (run.sh)
+│   └── tests/              # C++ rep counter simulations & Swift workout/pulse checks (run.sh)
 ├── firmware/               # Legacy Wi-Fi & single-file BLE sketch (MotionTrackSingle/) + host tests
 ├── backend/                # Node 24 + Express 5 + SQLite/Turso API, email bot, CLI manage.js & tests
 ├── frontend/               # React 19 + Vite dashboard (Patient /, Doctor /doctor, Admin /admin) + fake device
@@ -117,16 +117,33 @@ motiontrack/
 
 ## Wearable & Software Test Results
 
-### Prototype Wearable Trials (Group 65 · 5 Trials · 50 Reference Reps / Exercise)
+### Physical prototype trials
 
-| Check / Exercise | Reference | Measured Result | Accuracy / Coverage |
-| :--- | :--- | :--- | :---: |
-| **Biceps curls** | `50` manual reference reps | `45` counted | **90%** |
-| **Shoulder presses** | `50` manual reference reps | `42` counted | **84%** |
-| **Back rows** | `50` manual reference reps | `40` counted | **80%** |
-| **Software verification** | Host logic + simulated device | Automated backend, frontend, C++ & Swift suites | **Verified** |
+Group 65 reported these approximate results from testing the assembled wearable.
 
-> Note: Wearable percentages compare total counted vs. reference reps across trials; false positives and missed reps are tracked separately in bench tests (`docs/guides/demo.md`).
+| Exercise | Team observation |
+| :--- | :--- |
+| Biceps curls | The wearable detected nearly 100% of reps. |
+| Shoulder presses | The wearable missed about 1–2 reps out of 20, a detection rate of roughly 90–95%. |
+| Back rows | The team observed a miss rate similar to shoulder presses. |
+
+The [on-device verification steps](mobile/setup-guide.md#verify-the-setup) describe the manual-count comparison.
+
+### Simulated rep counts
+
+The [curl benchmark](mobile/tests/accuracy.cpp) and [wrist counter checks](mobile/tests/wrist.cpp) feed generated motion traces into the firmware counters. They compare counter totals with the expected reps for each simulated set.
+
+| Exercise and test input | Expected reps | Counter total | Rep shortfall | Reps above expected |
+| :--- | ---: | ---: | ---: | ---: |
+| Biceps curls, standard simulation | 10,000 | 10,000 | 0 | 0 |
+| Biceps curls, higher-noise stress simulation | 4,000 | 3,998 | 2 | 0 |
+| Shoulder presses and back rows, simulated wrist motion | 224 | 224 | 0 | 0 |
+
+Each curl run also included 1,400 rejection trials with movements such as partial lifts, tremor, and strap adjustments. Every rejection trial finished at or below its reference count.
+
+### Automated software checks
+
+All [test commands](#test-suites) passed on November 24, 2026, at revision `fbe3ead`. The backend runner reported 68 passes. The frontend passed 84 tests and built successfully. The legacy firmware passed 27 host checks. The mobile suite passed its host motion and workout checks, Swift packet decoding, offline sync, and synthetic camera pulse checks.
 
 ### Next-Prototype Focus
 - **Movement calibration:** Benchmark varied strap placement, repetition cadence, and partial ranges of motion.
@@ -180,7 +197,7 @@ Visit **http://localhost:5173/** (Patient), **/doctor**, or **/admin**. The pati
 | **Backend API & DB** | `cd backend && npm test` | Auth/roles, sessions, participant triage counts, progress BPM aggregates, care plans, messages, migrations, SQLite/Turso, admin CLI |
 | **Frontend UI** | `cd frontend && npm test && npm run build` | Care-plan validation, CSV export, exercise/BPM helpers, cohort triage & heart-rate filters, route/onboarding logic & Vite build |
 | **Legacy Firmware** | `bash firmware/tests/run.sh` | C++17 host tests for motion thresholds & sensor logic |
-| **Mobile BLE & Counter** | `bash mobile/tests/run.sh` | C++ wrist/tilt accuracy benchmarks + Swift BLE wire & PPG pulse-check tests |
+| **Mobile firmware & Swift** | `bash mobile/tests/run.sh` | Simulated rep counts, workout flow, BLE packet decoding, sync, and synthetic camera pulse checks |
 
 ### Documentation Index
 - [`docs/guides/user-guide.md`](docs/guides/user-guide.md) — Patient, doctor, and admin portal walkthrough
