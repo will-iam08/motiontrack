@@ -49,7 +49,7 @@ Mount randomMount(std::mt19937 &rng) {
 // axis in degrees; the simulator differentiates it.
 struct Recording {
   std::vector<double> angle;  // degrees, one per 20 ms sample
-  std::vector<double> tremor; // extra angular speed, deg/s
+  std::vector<double> twist;  // degrees about the forearm's long axis (wrist twist)
 };
 
 const double DT = 0.02;
@@ -62,11 +62,15 @@ SensorModel gSensor = {1.5, 0.4, 0.012, 0.15};
 double ease(double s) { s = s < 0 ? 0 : s > 1 ? 1 : s; return s * s * s * (10 - 15 * s + 6 * s * s); }
 
 void hold(Recording &r, double deg, double seconds) {
-  for (int i = 0; i < int(seconds / DT); ++i) r.angle.push_back(deg);
+  for (int i = 0; i < int(seconds / DT); ++i) { r.angle.push_back(deg); r.twist.push_back(0); }
 }
 void move(Recording &r, double from, double to, double seconds) {
   const int n = int(seconds / DT);
-  for (int i = 1; i <= n; ++i) r.angle.push_back(from + (to - from) * ease(double(i) / n));
+  for (int i = 1; i <= n; ++i) { r.angle.push_back(from + (to - from) * ease(double(i) / n)); r.twist.push_back(0); }
+}
+void twist(Recording &r, double from, double to, double seconds) {
+  const int n = int(seconds / DT);
+  for (int i = 1; i <= n; ++i) { r.angle.push_back(0); r.twist.push_back(from + (to - from) * ease(double(i) / n)); }
 }
 
 template <class Counter>
@@ -84,7 +88,10 @@ uint32_t play(Counter &counter, const Recording &rec, std::mt19937 &rng, double 
   const double phase = 6.28 * (u(rng) + 1);
   uint32_t now = 1000 + uint32_t(500 * (u(rng) + 1));
   double prevRate = 0;
+  const Vec forearm = scale(radius, -1.0);
   for (size_t i = 0; i < rec.angle.size(); ++i) {
+    const double tw = rec.twist[i];
+    const double twistRate = ((i ? tw - rec.twist[i - 1] : 0)) / DT;
     const double a = rec.angle[i];
     const double prev = i ? rec.angle[i - 1] : a;
     double rate = (a - prev) / DT;                                     // deg/s
@@ -95,11 +102,11 @@ uint32_t play(Counter &counter, const Recording &rec, std::mt19937 &rng, double 
     prevRate = rate;
     const double rateRad = rate * 3.14159265 / 180;
     // Gravity seen by the limb: "up" rotates opposite to the limb's rotation.
-    const Vec up = rotate(up0, {1, 0, 0}, -a * 3.14159265 / 180);
+    const Vec up = rotate(rotate(up0, {1, 0, 0}, -a * 3.14159265 / 180), forearm, -tw * 3.14159265 / 180);
     const Vec tangential = scale(cross({1, 0, 0}, radius), accelRad * r / 9.81);
     const Vec centripetal = scale(radius, -rateRad * rateRad * r / 9.81);
     Vec specific = add(add(up, tangential), centripetal);
-    Vec omega = add(scale({1, 0, 0}, rate), scale(wobbleAxis, gSensor.wobble * rate * sin(t * 2.1)));
+    Vec omega = add(add(scale({1, 0, 0}, rate), scale(wobbleAxis, gSensor.wobble * rate * sin(t * 2.1))), scale(forearm, twistRate));
     const Vec gs = toSensor(mount, omega);
     const Vec as = toSensor(mount, specific);
     const float accel[3] = {float(as.x + accelNoise(rng)), float(as.y + accelNoise(rng)), float(as.z + accelNoise(rng))};
@@ -121,8 +128,12 @@ struct Population {
   Range tremor;     // deg/s amplitude at 4–6 Hz
 };
 
-struct Exercise { const char *name; float minTilt, returnTilt; };
-const Exercise EXERCISES[] = {{"Biceps curl", 35, 20}, {"Shoulder press", 50, 20}, {"Back row", 30, 12}};
+// minTilt/returnTilt: the current counters. v5Min/v5Return: the previous counter's own settings.
+struct Exercise { const char *name; float minTilt, returnTilt, v5Min, v5Return; };
+const Exercise EXERCISES[] = {{"Biceps curl", 45, 20, 35, 20}, {"Shoulder press", 60, 20, 50, 20}, {"Back row", 40, 12, 30, 12}};
+
+template <class Counter> Counter makeCounter(const Exercise &ex) { return Counter(ex.minTilt, ex.returnTilt); }
+template <> TiltRepCounterV5 makeCounter<TiltRepCounterV5>(const Exercise &ex) { return TiltRepCounterV5(ex.v5Min, ex.v5Return); }
 
 template <class Counter>
 struct Score { long expected = 0, counted = 0, overCount = 0, underCount = 0, sessions = 0, perfect = 0; };
@@ -144,7 +155,7 @@ Score<Counter> scorePositives(const Exercise &ex, const Population &pop, int ses
       move(rec, end, 0, 0.6);  // settle back to rest
       hold(rec, 0, pick(rng, pop.restSec));
     }
-    Counter c(ex.minTilt, ex.returnTilt);
+    Counter c = makeCounter<Counter>(ex);
     const uint32_t got = play(c, rec, rng, pick(rng, pop.tremor), 4 + 2 * pick(rng, {0, 1}));
     s.expected += reps;
     s.counted += std::min<long>(got, reps);
@@ -164,6 +175,8 @@ long scoreNegative(const Exercise &ex, int kind, int sessions, unsigned seed) {
   for (int k = 0; k < sessions; ++k) {
     Recording rec;
     double tremor = 0, hz = 5;
+    long realReps = 0;
+    std::uniform_real_distribution<double> u01(0, 1);
     hold(rec, 0, 1.5);
     switch (kind) {
       case 0:  // half reps: lift to well under the minimum, lower again
@@ -193,6 +206,29 @@ long scoreNegative(const Exercise &ex, int kind, int sessions, unsigned seed) {
           for (int i = 0; i < 20; ++i) { move(rec, 0, amp, 0.25); move(rec, amp, -amp, 0.5); move(rec, -amp, 0, 0.25); }
         }
         break;
+      case 5:  // near misses: 2-8 degrees short of the minimum
+        for (int i = 0; i < 10; ++i) {
+          const double peak = ex.minTilt - pick(rng, {2, 8});
+          move(rec, 0, peak, pick(rng, {0.6, 3.0}));
+          hold(rec, peak, pick(rng, {0, 1}));
+          move(rec, peak, 0, pick(rng, {0.6, 3.0}));
+          hold(rec, 0, pick(rng, {0.3, 1.5}));
+        }
+        break;
+      case 6:  // three real reps, then ten wrist twists past the minimum angle
+        for (int i = 0; i < 3; ++i) {
+          const double peak = ex.minTilt + pick(rng, {15, 40});
+          move(rec, 0, peak, 1.2); move(rec, peak, 0, 1.2); hold(rec, 0, 1.0);
+        }
+        for (int i = 0; i < 10; ++i) {
+          const double peak = (u01(rng) < 0.5 ? -1 : 1) * (ex.minTilt + pick(rng, {5, 30}));
+          twist(rec, 0, peak, pick(rng, {0.6, 2.0}));
+          hold(rec, 0, 0);
+          twist(rec, peak, 0, pick(rng, {0.6, 2.0}));
+          hold(rec, 0, pick(rng, {0.3, 1.5}));
+        }
+        realReps = 3;
+        break;
       case 4:  // changes resting position and stays there (no return)
         {
           const double to = ex.minTilt + pick(rng, {5, 30});
@@ -201,8 +237,9 @@ long scoreNegative(const Exercise &ex, int kind, int sessions, unsigned seed) {
         }
         break;
     }
-    Counter c(ex.minTilt, ex.returnTilt);
-    falseReps += play(c, rec, rng, tremor, hz);
+    Counter c = makeCounter<Counter>(ex);
+    const long got = play(c, rec, rng, tremor, hz);
+    falseReps += got > realReps ? got - realReps : 0;
   }
   return falseReps;
 }
@@ -215,7 +252,9 @@ const Population POPULATIONS[] = {
   {"Older adult, tremor", {10, 45}, {1.2, 3.5}, {1.2, 3.5}, {0.0, 1.5}, {0.5, 3.0}, {0, 10}, {6, 14}},
   {"Very slow (6–8 s per lift)", {10, 40}, {6.0, 8.0}, {5.0, 8.0}, {0.0, 3.0}, {1.0, 3.0}, {0, 10}, {0, 5}},
 };
-const char *NEGATIVES[] = {"Half reps", "Tremor at rest", "Strap adjustments", "Walking arm swing", "New resting position"};
+const char *NEGATIVES[] = {"Half reps", "Tremor at rest", "Strap adjustments", "Walking arm swing", "New resting position",
+                           "Near misses (2-8° short)", "Wrist twists after 3 reps"};
+const int NEGATIVE_KINDS = 7;
 
 const Population STRESS[] = {
   {"Back-to-back, no pause", {8, 50}, {0.8, 3.0}, {0.8, 3.0}, {0.0, 1.0}, {0.0, 0.2}, {0, 12}, {0, 10}},
@@ -240,7 +279,7 @@ bool report(const char *label, bool strict, bool stress = false) {
              100.0 * s.counted / s.expected, s.overCount, 100.0 * s.perfect / s.sessions);
     }
     long falseTotal = 0;
-    for (int kind = 0; kind < 5; ++kind) {
+    for (int kind = 0; kind < NEGATIVE_KINDS; ++kind) {
       const long f = scoreNegative<Counter>(ex, kind, 200, (stress ? 9100 : 100) + kind);
       falseTotal += f;
       printf("  %-30s %4ld false reps in 200 sessions\n", NEGATIVES[kind], f);
@@ -256,7 +295,7 @@ bool report(const char *label, bool strict, bool stress = false) {
 
 int main(int argc, char **argv) {
   const bool compare = argc > 1 && strcmp(argv[1], "--compare") == 0;
-  if (compare) report<TiltRepCounterV5>("Previous counter (v5 thresholds)", false);
+  if (compare) report<TiltRepCounterV5>("Previous counter (v5, its own 35/50/30° settings)", false);
   bool ok = report<TiltRepCounter>("Current counter", true);
   gSensor = {3.0, 0.8, 0.025, 0.3};
   if (compare) report<TiltRepCounterV5>("Previous counter, stress (2x noise and bias, unseen seeds)", false, true);

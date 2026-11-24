@@ -37,7 +37,9 @@ int main() {
     ArmCurlCounter curl;
     uint32_t now = 1000;
     CHECK("curl: full rep counts", rep(curl, now, 90.0f, 1000, 1000) == 1);
-    CHECK("curl: steady 45-degree rep counts", rep(curl, now, 45.0f, 1200, 1200) == 1);
+    CHECK("curl: steady 55-degree rep counts", rep(curl, now, 55.0f, 1200, 1200) == 1);
+    CHECK("curl: slow 4-second curl counts", rep(curl, now, 60.0f, 4000, 4000) == 1);
+    CHECK("curl: 40-degree near miss does not count", rep(curl, now, 40.0f, 1200, 1200) == 0);
     CHECK("curl: slightly shaky rep counts", rep(curl, now, 60.0f, 1200, 1200, 0.0f, 8.0f) == 1);
     CHECK("curl: lowered to within 15 degrees counts", rep(curl, now, 60.0f, 1200, 1200, 15.0f) == 1);
     CHECK("curl: 25-degree half curl does not count", rep(curl, now, 25.0f, 600, 600) == 0);

@@ -73,7 +73,7 @@ inline Packet packet(Stage stage, uint16_t reps, uint32_t seconds, uint8_t movem
 //
 // A rep: the tilt from rest reaches the exercise's minimum angle in the lift
 // direction (learned from the first rep), then comes back to within the return
-// angle of rest, taking at least 0.6 s. A lift that stops short of the minimum
+// angle of rest, taking at least 0.8 s. A lift that stops short of the minimum
 // is reported as a shallow attempt instead.
 class TiltRepCounter {
  public:
@@ -81,7 +81,7 @@ class TiltRepCounter {
   static constexpr float kShallowFloor = 15.0f;    // an attempt this high but under the minimum is "shallow"
   static constexpr float kRestTilt = 6.0f;         // degrees from rest that end an attempt
   static constexpr float kStillStep = 2.0f;        // degrees per 250 ms window that still counts as still
-  static constexpr uint32_t kMinRepMs = 600;       // faster than this is a bounce, not a rep
+  static constexpr uint32_t kMinRepMs = 800;       // faster than this is a bounce, not a rep
   static constexpr uint32_t kReanchorMs = 3000;    // still this long below the minimum: new resting position
   static constexpr uint32_t kGiveUpMs = 20000;     // held up this long without returning: new resting position
   static constexpr float kFilterSeconds = 0.4f;    // accelerometer correction time constant
@@ -251,7 +251,7 @@ class TiltRepCounter {
     if (!hasDirection_) return true;
     float axis[3];
     if (!tiltAxis(axis)) return false;
-    return axis[0] * direction_[0] + axis[1] * direction_[1] + axis[2] * direction_[2] > 0.3f;
+    return axis[0] * direction_[0] + axis[1] * direction_[1] + axis[2] * direction_[2] > 0.6f;  // within about 50 degrees of the learned axis
   }
 
   void learnDirection() {
@@ -279,24 +279,24 @@ class TiltRepCounter {
 // ===== ArmCurlCounter.h =====
 class ArmCurlCounter : public TiltRepCounter {
  public:
-  // Lift at least 35 degrees, then lower to within 20 degrees of the start.
-  ArmCurlCounter() : TiltRepCounter(35.0f, 20.0f) {}
+  // Lift at least 45 degrees from rest, then lower to within 20 degrees of it.
+  ArmCurlCounter() : TiltRepCounter(45.0f, 20.0f) {}
 };
 
 // ===== ShoulderPressCounter.h =====
 class ShoulderPressCounter : public TiltRepCounter {
  public:
   // shortcut: upper-arm tilt targets are provisional until tested with the mounted sensor.
-  // Raise at least 50 degrees, then lower to within 20 degrees of the start.
-  ShoulderPressCounter() : TiltRepCounter(50.0f, 20.0f) {}
+  // Raise at least 60 degrees from rest, then lower to within 20 degrees of it.
+  ShoulderPressCounter() : TiltRepCounter(60.0f, 20.0f) {}
 };
 
 // ===== BackRowCounter.h =====
 class BackRowCounter : public TiltRepCounter {
  public:
   // shortcut: upper-arm tilt targets are provisional until tested with the mounted sensor.
-  // Pull back at least 30 degrees, then return to within 12 degrees of the start.
-  BackRowCounter() : TiltRepCounter(30.0f, 12.0f) {}
+  // Pull back at least 40 degrees from rest, then return to within 12 degrees of it.
+  BackRowCounter() : TiltRepCounter(40.0f, 12.0f) {}
 };
 
 // ===== HeartCheckIn.h =====

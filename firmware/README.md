@@ -17,8 +17,8 @@ are skipped until it is set to `true`.
 
 **How reps are counted** (`TiltRepCounter.h`): a complementary filter tracks which way is up (the gyro for
 smooth motion, gravity to remove drift). A rep is a lift away from the resting position past the exercise's
-minimum angle (curl 35°, press 50°, row 30°) in the lift direction learned from the first rep, followed by a
-return to within the return angle (20°, 20°, 12°), taking at least 0.6 s. Speed does not matter, so slow reps
+minimum angle (curl 45°, press 60°, row 40°) in the lift direction learned from the first rep, followed by a
+return to within the return angle (20°, 20°, 12°), taking at least 0.8 s. Speed does not matter, so slow reps
 from older patients count; half reps, tremor, strap adjustments and arm swing do not. Very slow drift (under
 about 8°/s) is treated as a change of posture. `mobile/tests/accuracy.cpp` scores the counter on simulated
 movement (typical and older adults, tremor, noise, random sensor mounting) and is part of `mobile/tests/run.sh`;

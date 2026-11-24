@@ -4,6 +4,6 @@
 
 class ArmCurlCounter : public TiltRepCounter {
  public:
-  // Lift at least 35 degrees, then lower to within 20 degrees of the start.
-  ArmCurlCounter() : TiltRepCounter(35.0f, 20.0f) {}
+  // Lift at least 45 degrees from rest, then lower to within 20 degrees of it.
+  ArmCurlCounter() : TiltRepCounter(45.0f, 20.0f) {}
 };

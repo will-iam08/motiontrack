@@ -15,7 +15,7 @@
 //
 // A rep: the tilt from rest reaches the exercise's minimum angle in the lift
 // direction (learned from the first rep), then comes back to within the return
-// angle of rest, taking at least 0.6 s. A lift that stops short of the minimum
+// angle of rest, taking at least 0.8 s. A lift that stops short of the minimum
 // is reported as a shallow attempt instead.
 class TiltRepCounter {
  public:
@@ -23,7 +23,7 @@ class TiltRepCounter {
   static constexpr float kShallowFloor = 15.0f;    // an attempt this high but under the minimum is "shallow"
   static constexpr float kRestTilt = 6.0f;         // degrees from rest that end an attempt
   static constexpr float kStillStep = 2.0f;        // degrees per 250 ms window that still counts as still
-  static constexpr uint32_t kMinRepMs = 600;       // faster than this is a bounce, not a rep
+  static constexpr uint32_t kMinRepMs = 800;       // faster than this is a bounce, not a rep
   static constexpr uint32_t kReanchorMs = 3000;    // still this long below the minimum: new resting position
   static constexpr uint32_t kGiveUpMs = 20000;     // held up this long without returning: new resting position
   static constexpr float kFilterSeconds = 0.4f;    // accelerometer correction time constant
@@ -193,7 +193,7 @@ class TiltRepCounter {
     if (!hasDirection_) return true;
     float axis[3];
     if (!tiltAxis(axis)) return false;
-    return axis[0] * direction_[0] + axis[1] * direction_[1] + axis[2] * direction_[2] > 0.3f;
+    return axis[0] * direction_[0] + axis[1] * direction_[1] + axis[2] * direction_[2] > 0.6f;  // within about 50 degrees of the learned axis
   }
 
   void learnDirection() {
