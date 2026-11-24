@@ -119,13 +119,15 @@ motiontrack/
 
 ### Physical prototype trials
 
-Group 65 reported these approximate results from testing the assembled wearable.
+Group 65 tested the assembled wearable. The table expresses the team's observations on a common 50-rep scale.
 
-| Exercise | Team observation |
-| :--- | :--- |
-| Biceps curls | The wearable detected nearly 100% of reps. |
-| Shoulder presses | The wearable missed about 1–2 reps out of 20, a detection rate of roughly 90–95%. |
-| Back rows | The team observed a miss rate similar to shoulder presses. |
+| Exercise | Equivalent reps detected out of 50 | Detection rate |
+| :--- | ---: | ---: |
+| Biceps curls | Nearly 50 / 50 | Nearly 100% |
+| Shoulder presses | 45–47.5 / 50 | 90–95% |
+| Back rows | About 45–47.5 / 50 | About 90–95% |
+
+Shoulder presses missed about 1–2 reps out of 20, which scales to 45–47.5 detections out of 50. The back-row estimate reflects the team's observation that it performed about the same as shoulder presses.
 
 The [on-device verification steps](mobile/setup-guide.md#verify-the-setup) describe the manual-count comparison.
 
