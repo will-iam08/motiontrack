@@ -130,6 +130,10 @@ motiontrack/
 | **Doctor — Care Plans & Inbox (`/doctor`)** | **Admin — System Overview (`/admin`)** |
 | <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor console displaying patient message inbox and live exercise status" width="100%" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin overview showing patient, doctor, session, device, and unread message metrics" width="100%" /> |
 
+- **Patient (`/`):** Live Workout HUD (`Before BPM → Counting → After BPM → Done` progress bar + rep counter) during active `Motion Log` sessions, auto-collapsed iPhone setup with 1-click copyable Server URL once synced, care plan badges and set durations on recent sets, doctor reply badge on Messages, and Progress charts for completed exercises, reps, **Active time**, and **Before vs. After Heart Rate** against the prescribed target BPM band.
+- **Doctor (`/doctor`):** 4-tile clinical cohort summary and triage filter chips (`Live now`, `Needs attention`, `Unread messages`, `Inactive (7+ d)`), collapsible message inbox replies with replace warnings, and a unified patient record view combining the Live Workout HUD, Care Plan editor (with quick target presets and unsaved-changes leave guard), Progress & Heart Rate charts, patient-filtered messages, and printable clinical history.
+- **Admin (`/admin`) & Auth:** Quick-assign links for unassigned patients on Overview and Assignments, searchable patient/assignment/doctor lists, Show/Hide password toggles, and direct wrong-portal recovery links on sign-in.
+
 ---
 
 ## Quick Start
@@ -158,8 +162,8 @@ Visit **http://localhost:5173/** (Patient), **/doctor**, or **/admin**, or run t
 
 | Component | Command | Covers |
 | :--- | :--- | :--- |
-| **Backend API & DB** | `cd backend && npm test` | Auth/roles, sessions, care plans, messages, migrations, SQLite/Turso, admin CLI |
-| **Frontend UI** | `cd frontend && npm test && npm run build` | Care-plan validation, CSV export, exercise/BPM helpers, route/onboarding logic & Vite build |
+| **Backend API & DB** | `cd backend && npm test` | Auth/roles, sessions, participant triage counts, progress BPM aggregates, care plans, messages, migrations, SQLite/Turso, admin CLI |
+| **Frontend UI** | `cd frontend && npm test && npm run build` | Care-plan validation, CSV export, exercise/BPM helpers, cohort triage & heart-rate filters, route/onboarding logic & Vite build |
 | **Legacy Firmware** | `bash firmware/tests/run.sh` | C++17 host tests for motion thresholds & sensor logic |
 | **Mobile BLE & Counter** | `bash mobile/tests/run.sh` | C++ wrist/tilt accuracy benchmarks + Swift BLE wire & PPG pulse-check tests |
 

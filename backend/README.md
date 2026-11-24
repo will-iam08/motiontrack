@@ -71,12 +71,41 @@ A missing check-in is `null`, never 0. `*_skipped` is 0 or 1. Old workouts from 
 Progress `P`, calculated from `completed` workouts only:
 
 ```json
-{"completed_workouts":2,"total_repetitions":20,"total_duration_seconds":0,
- "daily":[{"date":"2026-11-18","exercise_name":"Arm Curl","workouts":2,"repetitions":20,"duration_seconds":0}]}
+{
+  "completed_workouts": 2,
+  "total_repetitions": 20,
+  "total_duration_seconds": 80,
+  "daily": [
+    {
+      "date": "2026-11-18",
+      "exercise_name": "Arm Curl",
+      "workouts": 2,
+      "repetitions": 20,
+      "duration_seconds": 80,
+      "avg_before_bpm": 74,
+      "avg_after_bpm": 106
+    }
+  ],
+  "heart_rate": [
+    {
+      "id": "workout-uuid",
+      "date": "2026-11-18",
+      "recorded_at": "2026-11-18T15:02:12.000Z",
+      "exercise_name": "Arm Curl",
+      "repetitions": 10,
+      "target_reps": 10,
+      "elapsed_seconds": 40,
+      "before_bpm": 74,
+      "after_bpm": 106
+    }
+  ]
+}
 ```
 
-Dates are the UTC date of `started_at` (or `created_at` when there is none). In the tables below, `S`, `W`, `U`, `D`
-and `P` stand for these objects.
+Dates are the UTC date of `started_at` (or `created_at` when there is none). `daily` includes rounded daily average
+`avg_before_bpm` and `avg_after_bpm`, and `heart_rate` returns up to the 40 most recent completed workouts with a
+`before_bpm` or `after_bpm` reading ordered chronologically. In the tables below, `S`, `W`, `U`, `D` and `P` stand
+for these objects.
 
 ### Health, exercises and accounts
 
@@ -135,7 +164,7 @@ A participant has at most one active session at a time. A session is tied to the
 
 | Method and route | Access | Response |
 | --- | --- | --- |
-| `GET /api/participants` | Staff | 200 `{"participants":[U + "active_session_id"]}`: only assigned patients. `active_session_id` is the id of the patient's active session, or `null`. |
+| `GET /api/participants` | Staff | 200 `{"participants":[U + "active_session_id","session_count","last_session_at","workout_count","incomplete_workouts","unread_messages","out_of_range_bpm_count"]}`: only assigned patients. `active_session_id` is the id of the patient's active session, or `null`. |
 | `GET /api/participants/:id/sessions` | Staff or admin | 200 like `GET /api/sessions` (same `limit`, `offset`, `status`). An unassigned participant (for staff) or an id that is not a participant: 404. |
 | `GET /api/participants/:id/workouts` | Staff or admin | 200 like `GET /api/workouts` (same filters incl. `kind`). Unassigned: 404. |
 | `GET /api/participants/:id/progress` | Staff or admin | 200 `P` (optional `exercise_name`, `kind`). Unassigned: 404. |

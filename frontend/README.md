@@ -3,18 +3,23 @@
 React + Vite frontend for the [MotionTrack backend](../backend/README.md). It has three entry points:
 
 - **Patient:** `http://localhost:5173/` — register or sign in, view the **Overview** dashboard fed by the Motion Log
-  iPhone app (setup instructions with copyable server URL, doctor's care plan, synced totals, recent sets and optional
-  live stream during active app workouts), browse **History** (CSV export and print), inspect **Progress** charts, and
-  ask the doctor questions on the **Messages** tab. (Legacy **My devices** and Wi-Fi device tokens are retired from the UI.)
+  iPhone app (auto-collapsing setup card once sets are synced, with 1-click copyable server URL, doctor's care plan, synced
+  totals, recent sets with duration and care-plan badges, and a read-only Live Workout HUD during active app workouts),
+  browse **History** (CSV export and clinical print report), inspect **Progress** charts (completed exercises, reps, active
+  time, and Before vs. After heart rate against the target BPM band), and ask the doctor questions on **Messages**
+  (with a doctor-reply badge). (Legacy **My devices** and Wi-Fi device tokens are retired from the UI.)
 - **Doctor:** `http://localhost:5173/doctor` — sign in with a doctor account, read and answer questions in the
-  Patient Message Inbox, see assigned patients (with a "Live now" badge), open each patient's sessions and
-  exercises (read-only), and set each patient's care plan.
-- **Admin:** `http://localhost:5173/admin` — overview metrics, every patient's sessions, patient–doctor
-  assignments and doctor accounts.
+  Patient Message Inbox (with collapsible reply editors), triage assigned patients (`All`, `Live now`, `Needs attention`,
+  `Unread messages`, `Inactive (7+ d)`), open each patient's record (Live Workout HUD, Care Plan editor with quick
+  presets and an unsaved-changes leave guard, embedded Progress & Heart Rate charts, patient-filtered messages, and
+  read-only session history), and set each patient's care plan.
+- **Admin:** `http://localhost:5173/admin` — overview metrics, 1-click quick-assign links for unassigned patients,
+  searchable patient/assignment/doctor lists, every patient's sessions, patient–doctor assignments, and doctor accounts
+  (with password Show/Hide).
 
 Signing in on the wrong entry point is refused by the server ("This is a patient account. Use the patient
-sign-in.", or the doctor or admin version). Internally the roles are `participant` (patient), `staff` (doctor) and
-`admin`; that is what the API and CLI call them.
+sign-in.", or the doctor or admin version) with an inline link directly to the matching sign-in portal. Internally the
+roles are `participant` (patient), `staff` (doctor) and `admin`; that is what the API and CLI call them.
 
 ## Requirements
 
@@ -65,8 +70,9 @@ npm test
 npm run build
 ```
 
-`npm test` runs the unit tests (exercise status and BPM display rules, progress ranges, route detection, care-plan
-checks and form validation, message and admin helpers, and the dev-server origin rule).
+`npm test` runs the unit tests (exercise status and BPM display rules, progress and heart-rate range filters, doctor/patient
+cohort filtering, route detection, care-plan checks and form validation, message and admin helpers, and the dev-server
+origin rule).
 `npm run build` writes the production build to `dist/`. `npm run preview` serves it at `http://localhost:5173`.
 
 ## Admin and doctor accounts
@@ -137,20 +143,26 @@ The full course demo is in [../docs/guides/demo.md](../docs/guides/demo.md).
 
 ## How the website behaves
 
-- **Sign-in.** The account token is kept in memory only; reloading signs you out. Sign-out revokes the session on
-  the server and any 401 returns to the sign-in screen.
+- **Sign-in.** The account token is kept in memory only; reloading signs you out. Password fields include an accessible
+  Show/Hide toggle, failed sign-in attempts preserve the typed password for quick correction, and Sign-out revokes the
+  session on the server (any 401 returns to the sign-in screen).
 - **Device tokens** are shown once, kept only while that panel is open, and never stored or logged by the site.
-- **Live exercise.** The open exercise is refreshed about once a second in a single awaited loop (never
-  overlapping); lists refresh about every 5 seconds. Failures back off (1, 2, 4, 8, then 10 s) and the page marks
-  itself as disconnected from the server while it keeps the last data. If the device has not contacted the server for more than
-  5 seconds while an exercise is open, the page shows "Device not responding".
+- **Live exercise.** The open exercise is refreshed in a single awaited loop (never overlapping); lists refresh about
+  every 5 seconds, and failures back off exponentially while keeping the last data on screen. During live workouts, both
+  Patient Overview and Doctor Patient Detail show the read-only 4-step **Live Workout HUD** (with "Not responding" after
+  5 seconds of no update).
 - **Heart rate** is only the before and after check-in values with their capture times. A missing value shows as
   "No reading" (or "Skipped" when the patient skipped it), never as 0 and never estimated.
 - **Status.** An exercise is **Complete** only when all target reps were counted and both check-ins exist.
   Otherwise it ends **Incomplete** (skipped or missing reading, stopped exercise, or session ended early).
-- **Progress** counts completed exercises and reps only, over a selectable range.
-- **Doctor view** uses the same polling for a live session; exercise records are read-only, and an unassigned
-  patient is not reachable (the API answers 404). The message inbox refreshes every 10 seconds.
+- **Progress** counts completed exercises only, charting completed exercises, repetitions, and active time over a
+  selectable range alongside a **Heart rate before & after** chart (and accessible table views) overlaid with the care
+  plan's target BPM band and out-of-range markers.
+- **Doctor view** shows 4 triage tiles (`Assigned patients`, `Live now`, `Needs attention`, `Unread messages`), triage
+  filter chips, embedded progress/HR charts and patient messages inside `PatientDetail`, quick care-plan presets with an
+  unsaved-changes leave prompt, and an inbox refreshing every 10 seconds (with backoff). Exercise records stay read-only,
+  and an unassigned patient returns 404.
 - **Care plans.** The Care plan column compares each exercise with the patient's current plan and always says the
   result in words next to the badge (Met / Below, In range / Above / Below / No reading).
-- **Admin view** refreshes the overview every 10 seconds and opens any patient with the same page a doctor sees.
+- **Admin view** refreshes the overview every 10 seconds, supports searchable Assignments and Doctor lists plus 1-click
+  quick-assign for unassigned patients, and opens any patient with the same read-only record view a doctor sees.
