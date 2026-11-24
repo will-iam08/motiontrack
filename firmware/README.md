@@ -15,6 +15,15 @@ DEVKIT V1**, partition scheme **Huge APP**, and the SparkFun MAX3010x, Adafruit 
 libraries listed below. The pulse sensor is switched off (`HEART_SENSOR_INSTALLED = false`), so heart-rate checks
 are skipped until it is set to `true`.
 
+**How reps are counted** (`TiltRepCounter.h`): a complementary filter tracks which way is up (the gyro for
+smooth motion, gravity to remove drift). A rep is a lift away from the resting position past the exercise's
+minimum angle (curl 35°, press 50°, row 30°) in the lift direction learned from the first rep, followed by a
+return to within the return angle (20°, 20°, 12°), taking at least 0.6 s. Speed does not matter, so slow reps
+from older patients count; half reps, tremor, strap adjustments and arm swing do not. Very slow drift (under
+about 8°/s) is treated as a change of posture. `mobile/tests/accuracy.cpp` scores the counter on simulated
+movement (typical and older adults, tremor, noise, random sensor mounting) and is part of `mobile/tests/run.sh`;
+it checks the algorithm, not real-world accuracy, which still needs manual-count trials on the worn tracker.
+
 For battery use, power the ESP32 through **VIN** at 5 V (for example a 9 V battery into a breadboard supply set
 to 5 V) and run the OLED and motion sensor from the ESP32's **3V3** pin. A weak battery browns the board out when
 Bluetooth starts; the OLED then reports "Power too weak".

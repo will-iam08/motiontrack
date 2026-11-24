@@ -3,22 +3,35 @@
 #include <cmath>
 #include <stdint.h>
 
-// shortcut: learns direction from the first swing. Reselect the exercise after remounting.
+// Counts reps by how far the limb tilts away from its resting position and
+// back, not by how fast it moves, so slow, careful reps from older patients
+// count while half reps, tremor, arm swing and strap adjustments do not.
 //
-// Thresholds match the curl counter that tested most accurately on the real
-// tracker (the v5 sketch). Lowering them lets drift and small wobbles count.
+// Orientation: a complementary filter. The gyro rotates the estimated "up"
+// direction every sample (smooth, no lag during a lift); the accelerometer
+// pulls it back toward gravity over about half a second (no long-term drift).
+// Samples where the limb's own acceleration distorts gravity (outside
+// 0.75-1.25 g) only use the gyro.
+//
+// A rep: the tilt from rest reaches the exercise's minimum angle in the lift
+// direction (learned from the first rep), then comes back to within the return
+// angle of rest, taking at least 0.6 s. A lift that stops short of the minimum
+// is reported as a shallow attempt instead.
 class TiltRepCounter {
  public:
-  static constexpr float kStartSpeed = 30.0f;     // deg/s that starts a lift
-  static constexpr float kReverseSpeed = 30.0f;   // deg/s downward that ends the lift
-  static constexpr float kAxisLearnSpeed = 30.0f; // deg/s needed to learn the swing axis
-  static constexpr float kDeadband = 10.0f;       // deg/s treated as holding still
-  static constexpr float kMinSwing = 15.0f;       // degrees each way, from the gyro
-  static constexpr float kTremorSpeed = 30.0f;    // an upward move this fast while lowering cancels the rep
-  static constexpr uint32_t kMaxRepMs = 8000;     // a single rep must finish within 8 s
+  static constexpr float kAttemptTilt = 12.0f;     // degrees from rest that start an attempt
+  static constexpr float kShallowFloor = 15.0f;    // an attempt this high but under the minimum is "shallow"
+  static constexpr float kRestTilt = 6.0f;         // degrees from rest that end an attempt
+  static constexpr float kStillStep = 2.0f;        // degrees per 250 ms window that still counts as still
+  static constexpr uint32_t kMinRepMs = 600;       // faster than this is a bounce, not a rep
+  static constexpr uint32_t kReanchorMs = 3000;    // still this long below the minimum: new resting position
+  static constexpr uint32_t kGiveUpMs = 20000;     // held up this long without returning: new resting position
+  static constexpr float kFilterSeconds = 0.4f;    // accelerometer correction time constant
 
   TiltRepCounter(float minimumTilt, float returnTilt) : minimumTilt_(minimumTilt), returnTilt_(returnTilt) {}
 
+  // Gyro in deg/s (bias already removed), accel in g, time in ms. Returns true
+  // on the sample where a rep is counted.
   bool update(float gx, float gy, float gz, const float accel[3], uint32_t nowMs) {
     shallowAttempt_ = false;
     const uint32_t dt = nowMs - lastMs_;
@@ -27,119 +40,180 @@ class TiltRepCounter {
       hasLast_ = true;
       return false;
     }
-    if (dt > 200 || !std::isfinite(gx) || !std::isfinite(gy) || !std::isfinite(gz)) {
-      discardMovement();
-      hasTilt_ = false;
+    if (dt > 200 || !std::isfinite(gx) || !std::isfinite(gy) || !std::isfinite(gz) ||
+        !std::isfinite(accel[0]) || !std::isfinite(accel[1]) || !std::isfinite(accel[2])) {
+      // A gap in the data: the orientation can no longer be trusted.
+      resetMotion(false);
+      hasLast_ = true;
       return false;
     }
     if (dt == 0) return false;
-    const float accelSquared = accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2];
-    const bool tiltUsable = accelSquared >= 0.75f * 0.75f && accelSquared <= 1.25f * 1.25f;
-    if (tiltUsable) {
-      const float weight = hasTilt_ ? dt / (60.0f + dt) : 1.0f;
-      for (int i = 0; i < 3; ++i) tilt_[i] += weight * (accel[i] - tilt_[i]);
-      hasTilt_ = true;
-    }
-    const float gyro[] = {gx, gy, gz};
-    if (axis_ < 0) {
-      int strongest = 0;
-      for (int i = 1; i < 3; ++i) {
-        if (std::fabs(gyro[i]) > std::fabs(gyro[strongest])) strongest = i;
+    const float seconds = dt / 1000.0f;
+
+    // 1. Orientation.
+    const float norm = std::sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
+    const bool accelUsable = norm >= 0.75f && norm <= 1.25f;
+    const float speed = std::sqrt(gx * gx + gy * gy + gz * gz);  // deg/s
+    if (hasUp_) {
+      // "Up" is fixed in the world, so in the sensor frame it turns by -omega.
+      const float k = 0.0174533f * seconds;
+      const float wx = gx * k, wy = gy * k, wz = gz * k;
+      const float ux = up_[0] - (wy * up_[2] - wz * up_[1]);
+      const float uy = up_[1] - (wz * up_[0] - wx * up_[2]);
+      const float uz = up_[2] - (wx * up_[1] - wy * up_[0]);
+      up_[0] = ux; up_[1] = uy; up_[2] = uz;
+      if (accelUsable) {
+        // Trust the accelerometer less while the limb is moving fast.
+        const float weight = seconds / (kFilterSeconds + seconds) / (1.0f + speed / 90.0f);
+        for (int i = 0; i < 3; ++i) up_[i] += weight * (accel[i] / norm - up_[i]);
       }
-      if (!tiltUsable || std::fabs(gyro[strongest]) < kAxisLearnSpeed) return false;
-      axis_ = strongest;
-      sign_ = gyro[axis_] > 0.0f ? 1.0f : -1.0f;
-    }
-    float speed = gyro[axis_] * sign_;
-    if (std::fabs(speed) < kDeadband) speed = 0.0f;
-    if (phase_ == Idle) {
-      if (tiltUsable && speed >= kStartSpeed) {
-        for (int i = 0; i < 3; ++i) startTilt_[i] = tilt_[i];
-        phase_ = Rising;
-        cycleStartMs_ = phaseStartMs_ = nowMs;
-      }
+      normalize(up_);
+    } else {
+      if (!accelUsable) return false;
+      for (int i = 0; i < 3; ++i) up_[i] = accel[i] / norm;
+      hasUp_ = true;
+      setRest(nowMs);
       return false;
     }
-    if (nowMs - cycleStartMs_ > kMaxRepMs) {
-      discardMovement();
-      return false;
-    }
-    const float degrees = speed * static_cast<float>(dt) / 1000.0f;
-    const float tiltDelta = tiltUsable ? angleFromStart() : -1.0f;
-    if (phase_ == Rising) {
-      if (tiltDelta >= minimumTilt_) reachedTilt_ = true;
-      if (speed <= -kReverseSpeed) {
-        const bool liftQualified = upDegrees_ >= kMinSwing && nowMs - phaseStartMs_ >= 100;
-        shallowAttempt_ = liftQualified && !reachedTilt_ && tiltDelta >= 0.0f;
-        if (!liftQualified || !reachedTilt_) {
-          discardMovement();
-        } else {
-          phase_ = Falling;
-          phaseStartMs_ = nowMs;
-        }
+
+    // 2. Stillness, judged by how far "up" moved over the last 250 ms, which
+    //    ignores the gyro's tremor and noise.
+    if (nowMs - windowStartMs_ >= 250) {
+      const bool stillWindow = angleBetween(up_, windowUp_) <= kStillStep;
+      if (stillWindow) {
+        if (!still_) stillSinceMs_ = windowStartMs_;
+        still_ = true;
       } else {
-        upDegrees_ += degrees;
-        if (upDegrees_ < 0.0f) upDegrees_ = 0.0f;
+        still_ = false;
+      }
+      for (int i = 0; i < 3; ++i) windowUp_[i] = up_[i];
+      windowStartMs_ = nowMs;
+    }
+    // Still only if the last full window was still AND the limb has not moved
+    // since it ended (otherwise the first moments of a slow lift would still
+    // look still for up to 250 ms).
+    const bool stillNow = still_ && angleBetween(up_, windowUp_) <= kStillStep;
+    const uint32_t stillMs = stillNow ? nowMs - stillSinceMs_ : 0;
+
+    // 3. Tilt from the resting position, in the lift direction.
+    const float tilt = angleBetween(up_, rest_);
+    const bool liftDirection = inLiftDirection();
+
+    if (phase_ == Idle) {
+      if (!attempting_ && tilt >= kAttemptTilt) {
+        attempting_ = true;
+        attemptStartMs_ = nowMs;
+        attemptPeak_ = tilt;
+      }
+      if (attempting_) {
+        if (tilt > attemptPeak_) attemptPeak_ = tilt;
+        if (tilt >= minimumTilt_ && liftDirection) {
+          learnDirection();
+          phase_ = Raised;
+          raisedSinceMs_ = nowMs;
+        } else if (tilt <= kRestTilt) {
+          shallowAttempt_ = attemptPeak_ >= kShallowFloor && liftDirection;
+          attempting_ = false;
+        }
+      }
+      // Follow slow posture changes while resting, and adopt a new resting
+      // position after holding still elsewhere for a few seconds.
+      if (phase_ == Idle && stillNow) {
+        if (tilt < kAttemptTilt && stillMs >= 500) {
+          const float w = seconds / (2.0f + seconds);
+          for (int i = 0; i < 3; ++i) rest_[i] += w * (up_[i] - rest_[i]);
+          normalize(rest_);
+        } else if (stillMs >= kReanchorMs) {
+          setRest(nowMs);
+        }
       }
       return false;
     }
-    if (speed >= kTremorSpeed) {
-      discardMovement();
+
+    // Raised: wait for the return.
+    if (tilt <= returnTilt_) {
+      const bool longEnough = nowMs - attemptStartMs_ >= kMinRepMs;
+      phase_ = Idle;
+      attempting_ = tilt > kRestTilt;
+      attemptStartMs_ = nowMs;
+      attemptPeak_ = tilt;
+      if (longEnough) {
+        ++count_;
+        return true;
+      }
       return false;
     }
-    downDegrees_ -= degrees;
-    if (downDegrees_ < 0.0f) downDegrees_ = 0.0f;
-    // The return must qualify while moving, even if the tilt estimate settles later.
-    if (speed < 0.0f && downDegrees_ >= kMinSwing && nowMs - phaseStartMs_ >= 100 &&
-        nowMs - cycleStartMs_ >= 500) {
-      returnQualified_ = true;
-    }
-    if (returnQualified_ && tiltDelta >= 0.0f && tiltDelta <= returnTilt_) {
-      ++count_;
-      discardMovement();
-      return true;
-    }
+    if (stillNow && stillMs >= kGiveUpMs) setRest(nowMs);  // never came back: this is the new rest
     return false;
   }
 
   void resetMotion(bool relearnAxis = false) {
-    discardMovement();
+    phase_ = Idle;
+    attempting_ = false;
     shallowAttempt_ = false;
     hasLast_ = false;
-    hasTilt_ = false;
-    if (relearnAxis) axis_ = -1;
+    hasUp_ = false;
+    still_ = false;
+    if (relearnAxis) hasDirection_ = false;
   }
 
   uint32_t count() const { return count_; }
   bool shallowAttempt() const { return shallowAttempt_; }
 
  private:
-  enum Phase { Idle, Rising, Falling };
+  enum Phase { Idle, Raised };
 
-  float angleFromStart() const {
-    const float x = startTilt_[1] * tilt_[2] - startTilt_[2] * tilt_[1];
-    const float y = startTilt_[2] * tilt_[0] - startTilt_[0] * tilt_[2];
-    const float z = startTilt_[0] * tilt_[1] - startTilt_[1] * tilt_[0];
-    const float dot = startTilt_[0] * tilt_[0] + startTilt_[1] * tilt_[1] + startTilt_[2] * tilt_[2];
-    if (x == 0.0f && y == 0.0f && z == 0.0f && dot == 0.0f) return -1.0f;
-    return std::atan2(std::sqrt(x * x + y * y + z * z), dot) * 57.29578f;
+  static void normalize(float v[3]) {
+    const float n = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    if (n > 1e-6f) for (int i = 0; i < 3; ++i) v[i] /= n;
   }
 
-  void discardMovement() {
+  static float angleBetween(const float a[3], const float b[3]) {
+    const float cx = a[1] * b[2] - a[2] * b[1];
+    const float cy = a[2] * b[0] - a[0] * b[2];
+    const float cz = a[0] * b[1] - a[1] * b[0];
+    const float d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    return std::atan2(std::sqrt(cx * cx + cy * cy + cz * cz), d) * 57.29578f;
+  }
+
+  // The axis the limb turns about while leaving rest, as a unit vector.
+  bool tiltAxis(float out[3]) const {
+    out[0] = rest_[1] * up_[2] - rest_[2] * up_[1];
+    out[1] = rest_[2] * up_[0] - rest_[0] * up_[2];
+    out[2] = rest_[0] * up_[1] - rest_[1] * up_[0];
+    const float n = std::sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]);
+    if (n < 1e-4f) return false;
+    for (int i = 0; i < 3; ++i) out[i] /= n;
+    return true;
+  }
+
+  // Lifts go one way about the joint; moving the other way from rest (for
+  // example lowering from a raised resting position) is not a rep.
+  bool inLiftDirection() const {
+    if (!hasDirection_) return true;
+    float axis[3];
+    if (!tiltAxis(axis)) return false;
+    return axis[0] * direction_[0] + axis[1] * direction_[1] + axis[2] * direction_[2] > 0.3f;
+  }
+
+  void learnDirection() {
+    if (hasDirection_) return;
+    if (tiltAxis(direction_)) hasDirection_ = true;
+  }
+
+  void setRest(uint32_t nowMs) {
+    for (int i = 0; i < 3; ++i) rest_[i] = windowUp_[i] = up_[i];
+    windowStartMs_ = nowMs;
     phase_ = Idle;
-    upDegrees_ = downDegrees_ = 0.0f;
-    reachedTilt_ = returnQualified_ = false;
+    attempting_ = false;
   }
 
   Phase phase_ = Idle;
-  int axis_ = -1;
-  float sign_ = 1.0f;
-  float upDegrees_ = 0.0f, downDegrees_ = 0.0f;
   const float minimumTilt_;
   const float returnTilt_;
-  float tilt_[3] = {}, startTilt_[3] = {};
-  uint32_t count_ = 0, lastMs_ = 0, cycleStartMs_ = 0, phaseStartMs_ = 0;
-  bool hasLast_ = false, hasTilt_ = false;
-  bool reachedTilt_ = false, returnQualified_ = false;
+  float up_[3] = {0, 0, 1}, rest_[3] = {0, 0, 1}, windowUp_[3] = {0, 0, 1}, direction_[3] = {0, 0, 0};
+  uint32_t count_ = 0, lastMs_ = 0, windowStartMs_ = 0, stillSinceMs_ = 0, attemptStartMs_ = 0, raisedSinceMs_ = 0;
+  float attemptPeak_ = 0.0f;
+  bool hasLast_ = false, hasUp_ = false, hasDirection_ = false, still_ = false, attempting_ = false;
   bool shallowAttempt_ = false;
 };
