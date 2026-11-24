@@ -57,7 +57,7 @@ export default function App() {
             <p className="portal-label">{PORTAL_LABELS[portal]}</p>
           </div>
           {user && (
-            <div className="account">
+            <div className="account account-enter">
               <Avatar name={user.name} />
               <p>Signed in as <strong>{user.name}</strong>{ROLE_NOTES[user.role] ?? ''}</p>
               <button type="button" className="button button-small" onClick={logout}>Sign out</button>
@@ -66,14 +66,16 @@ export default function App() {
         </div>
       </header>
       <main id="main" tabIndex={-1} className="page">
-        {/* Keyed by account so no data survives a change of user. */}
-        {!user && <AuthScreen portal={portal} />}
-        {user?.role === 'participant' && <PatientView key={user.id} />}
-        {user?.role === 'staff' && <DoctorView key={user.id} />}
-        {user?.role === 'admin' && <AdminView key={user.id} />}
-        {user && !['participant', 'staff', 'admin'].includes(user.role) && (
-          <p className="alert alert-error" role="alert">This account type is not supported. Please sign out.</p>
-        )}
+        <div key={user ? `${user.role}:${user.id}` : `auth:${portal}`} className="page-view">
+          {/* Keyed by account so no data survives a change of user. */}
+          {!user && <AuthScreen portal={portal} />}
+          {user?.role === 'participant' && <PatientView key={user.id} />}
+          {user?.role === 'staff' && <DoctorView key={user.id} />}
+          {user?.role === 'admin' && <AdminView key={user.id} />}
+          {user && !['participant', 'staff', 'admin'].includes(user.role) && (
+            <p className="alert alert-error" role="alert">This account type is not supported. Please sign out.</p>
+          )}
+        </div>
       </main>
     </>
   );

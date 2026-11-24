@@ -52,19 +52,31 @@ export function DoctorApp() {
   const { api } = useAuth();
   const { patients, error, retry } = usePatients(api);
   const [selectedId, setSelectedId] = useState(null);
+  const [navDir, setNavDir] = useState('none');
   const [rosterChip, setRosterChip] = useState('all');
   const [rosterQuery, setRosterQuery] = useState('');
   const selected = patients?.find(patient => patient.id === selectedId) ?? null;
 
+  const openPatient = id => {
+    setNavDir('push');
+    setSelectedId(id);
+  };
+  const closePatient = () => {
+    setNavDir('pop');
+    setSelectedId(null);
+  };
+
   if (selectedId) {
     return (
-      <PatientDetail
-        patient={selected}
-        listError={error}
-        onRetry={retry}
-        onBack={() => setSelectedId(null)}
-        showMessages
-      />
+      <div key={`detail-${selectedId}`} className="screen-push">
+        <PatientDetail
+          patient={selected}
+          listError={error}
+          onRetry={retry}
+          onBack={closePatient}
+          showMessages
+        />
+      </div>
     );
   }
 
@@ -77,8 +89,8 @@ export function DoctorApp() {
   const counts = chipCounts(searched, ['all', 'live', 'attention', 'unread', 'inactive'], (items, chip) => filterPatients(items, { chip }));
 
   return (
-    <>
-      <MessageInbox onOpenPatient={setSelectedId} />
+    <div key="roster" className={navDir === 'pop' ? 'screen-pop' : undefined}>
+      <MessageInbox onOpenPatient={openPatient} />
       <div className="card">
         <section aria-labelledby="patients-heading">
           <div className="console-head">
@@ -197,7 +209,7 @@ export function DoctorApp() {
                       type="button"
                       className="button button-primary"
                       aria-label={`View workouts for ${patient.name}`}
-                      onClick={() => setSelectedId(patient.id)}
+                      onClick={() => openPatient(patient.id)}
                     >
                       View workouts
                     </button>
@@ -208,6 +220,6 @@ export function DoctorApp() {
           )}
         </section>
       </div>
-    </>
+    </div>
   );
 }

@@ -521,7 +521,18 @@ export function AdminApp() {
   const [view, setView] = useState('overview');
   const [tabDir, setTabDir] = useState('none');
   const [selectedId, setSelectedId] = useState(null);
+  const [navDir, setNavDir] = useState('none');
   const [quickAssignPatientId, setQuickAssignPatientId] = useState('');
+
+  const openPatient = useCallback(id => {
+    setNavDir('push');
+    setSelectedId(id);
+  }, []);
+
+  const closePatient = useCallback(() => {
+    setNavDir('pop');
+    setSelectedId(null);
+  }, []);
 
   const switchView = useCallback(next => {
     if (next === view) return;
@@ -538,20 +549,22 @@ export function AdminApp() {
 
   if (selectedId) {
     return (
-      <PatientDetail
-        patient={overview?.patients.find(patient => patient.id === selectedId) ?? null}
-        listError={error}
-        onRetry={reload}
-        onBack={() => setSelectedId(null)}
-        missingText="This patient account no longer exists."
-      />
+      <div key={`detail-${selectedId}`} className="screen-push">
+        <PatientDetail
+          patient={overview?.patients.find(patient => patient.id === selectedId) ?? null}
+          listError={error}
+          onRetry={reload}
+          onBack={closePatient}
+          missingText="This patient account no longer exists."
+        />
+      </div>
     );
   }
 
   const panelClass = tabDir === 'forward' ? 'tab-panel-forward' : tabDir === 'backward' ? 'tab-panel-backward' : undefined;
 
   return (
-    <>
+    <div key="admin-shell" className={navDir === 'pop' ? 'screen-pop' : undefined}>
       <TabNav views={VIEWS} current={view} onChange={switchView} label="Admin sections" />
       <div className="card">
         {error && overview && (
@@ -563,8 +576,8 @@ export function AdminApp() {
         {!overview && !error && <Loading label="Loading the overview…" />}
         {overview && (
           <div key={view} className={panelClass}>
-            {view === 'overview' && <Overview overview={overview} onOpenPatient={setSelectedId} onAssignPatient={openAssign} />}
-            {view === 'patients' && <AllPatients overview={overview} onOpenPatient={setSelectedId} />}
+            {view === 'overview' && <Overview overview={overview} onOpenPatient={openPatient} onAssignPatient={openAssign} />}
+            {view === 'patients' && <AllPatients overview={overview} onOpenPatient={openPatient} />}
             {view === 'assignments' && (
               <Assignments
                 overview={overview}
@@ -577,6 +590,6 @@ export function AdminApp() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

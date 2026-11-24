@@ -247,7 +247,7 @@ export function CopyButton({ text, label = 'Copy', copiedLabel = 'Copied' }) {
 
   return (
     <span className="copy-row">
-      <button type="button" className="button button-small" onClick={copy}>
+      <button type="button" className={state === 'copied' ? 'button button-small button-copied' : 'button button-small'} onClick={copy}>
         <Icon name={state === 'copied' ? 'check' : 'copy'} />{state === 'copied' ? copiedLabel : label}
       </button>
       <span role="status" className={state === 'copied' ? 'copy-done' : 'hint'}>

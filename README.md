@@ -57,11 +57,12 @@ An exercise record is marked **Complete** only when all target reps finish and b
 | **Enclosure** | 3D-printed *Diamond Ends* case | Secures the IMU cleanly along the forearm while keeping the OLED glanceable mid-set |
 | **Wireless Link** | Bluetooth Low Energy (BLE) | Exchanges workout config and live counts with `Motion Track`; ESP32 keeps counting if BLE drops |
 
-### 3-Stage Biceps Curl & Exercise Detection
-To avoid counting accidental reaches or pausing mid-lift, rep state runs directly on the ESP32 (`TiltRepCounter.h` / `WristRepCounter.h`):
-1. **Detect the lift:** Gyroscope angular motion registers forearm rotation and opens a candidate rep (counter remains at `0`).
-2. **Check the range:** Forearm tilt must cross an exercise-specific minimum angle threshold (blocking incomplete lifts).
-3. **Count on return:** Holding at the top remains in progress; the counter increments **only** when the arm returns near its starting calibration angle.
+### Wrist-Strapped Rep Detection & Firmware Checks
+For all three exercises, strap the `MPU6050` snugly **just above the wrist** of the working arm (holding the starting pose until **`Hold wrist still`** clears on the OLED for Shoulder press and Back row). Rep counting runs directly on the ESP32 (`TiltRepCounter.h` / `WristRepCounter.h`) and increments **only on the return**:
+1. **Bicep curl (arm lowered, elbow by side):** Curl up until the forearm tilts **≥ 45°** from the bottom (`≥ 0.5 s` total, including `≥ 0.1 s` between crossing `45°` and returning), then lower within **20°** of resting angle (the first completed rep sets the lift direction).
+2. **Shoulder press (hand at shoulder height):** Press overhead (**≥ 12 cm** lift) and lower back to shoulder height (**≥ 10.2 cm** return, **≥ 30 cm** combined).
+3. **Back row (lean forward, working arm hanging):** Pull hand toward your hip (**≥ 10 cm** lift) and lower until hanging again (**≥ 8.5 cm** return, **≥ 25 cm** combined).
+- **Press & row timing/symmetry guard:** Each direction must last **≥ 0.22 s**, with estimated return within **42%–380%** of the estimated lift.
 
 ---
 

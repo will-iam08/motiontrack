@@ -133,22 +133,23 @@ export function AuthScreen({ portal = 'patient' }) {
           {patient && (
             <div className="hero-actions">
               <a className="button hero-demo-link" href="#interactive-demo">
-                <Icon name="play" />Try interactive wearable demo ↓
+                <Icon name="play" />Try wrist-sensor rep demo ↓
               </a>
             </div>
           )}
         </div>
         <section className="card auth-card" aria-labelledby="auth-heading">
           {notice && <p className="alert alert-info" role="status">{notice}</p>}
-          <div id="auth-heading">
-            <ScreenHeading level={2} key={mode} autoFocus={hasSwitchedMode}>{registering ? 'Create your account' : copy.heading}</ScreenHeading>
-          </div>
-          <p>
-            {registering ? 'Create a patient account to record your movement exercises.' : copy.intro}
-          </p>
-          <form onSubmit={onSubmit} noValidate>
-            {registering && (
-              <div className="field">
+          <div key={mode} className={hasSwitchedMode ? 'auth-form-switch' : undefined}>
+            <div id="auth-heading">
+              <ScreenHeading level={2} key={mode} autoFocus={hasSwitchedMode}>{registering ? 'Create your account' : copy.heading}</ScreenHeading>
+            </div>
+            <p>
+              {registering ? 'Create a patient account to record your movement exercises.' : copy.intro}
+            </p>
+            <form onSubmit={onSubmit} noValidate>
+              {registering && (
+                <div className="field field-reveal">
                 <label htmlFor="auth-name">Your name</label>
                 <input
                   id="auth-name"
@@ -216,6 +217,7 @@ export function AuthScreen({ portal = 'patient' }) {
               {busy ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}
             </button>
           </form>
+          </div>
           {patient && (
             <p className="switch-mode">
               {registering ? 'Already have an account?' : 'New patient?'}{' '}
