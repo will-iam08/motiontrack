@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useAuth } from './auth.jsx';
 import { AuthScreen } from './components/AuthScreen.jsx';
 import { PatientApp } from './components/PatientApp.jsx';
@@ -17,7 +17,15 @@ const ROLE_NOTES = { staff: ' (doctor)', admin: ' (admin)' };
 
 export default function App() {
   const { user, logout } = useAuth();
+  const accountId = user?.id;
+  const previousAccount = useRef(accountId);
   const brandClicksRef = useRef([]);
+
+  useLayoutEffect(() => {
+    if (previousAccount.current === accountId) return;
+    previousAccount.current = accountId;
+    window.scrollTo(0, 0);
+  }, [accountId]);
 
   useEffect(() => {
     if (user || portal === 'admin') return undefined;
@@ -57,7 +65,7 @@ export default function App() {
             <p className="portal-label">{PORTAL_LABELS[portal]}</p>
           </div>
           {user && (
-            <div className="account account-enter">
+            <div className="account">
               <Avatar name={user.name} />
               <p>Signed in as <strong>{user.name}</strong>{ROLE_NOTES[user.role] ?? ''}</p>
               <button type="button" className="button button-small" onClick={logout}>Sign out</button>

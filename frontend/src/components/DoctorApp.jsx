@@ -58,10 +58,12 @@ export function DoctorApp() {
   const selected = patients?.find(patient => patient.id === selectedId) ?? null;
 
   const openPatient = id => {
+    window.scrollTo(0, 0);
     setNavDir('push');
     setSelectedId(id);
   };
   const closePatient = () => {
+    window.scrollTo(0, 0);
     setNavDir('pop');
     setSelectedId(null);
   };
@@ -94,7 +96,7 @@ export function DoctorApp() {
       <div className="card">
         <section aria-labelledby="patients-heading">
           <div className="console-head">
-            <div id="patients-heading"><ScreenHeading>Your patients</ScreenHeading></div>
+            <div id="patients-heading"><ScreenHeading autoFocus={false}>Your patients</ScreenHeading></div>
             <span className="badge badge-readonly"><Icon name="lock" />Records read only</span>
           </div>
           <p>

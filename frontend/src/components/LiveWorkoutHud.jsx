@@ -108,7 +108,7 @@ export function LiveWorkoutHud({ workout, serverTime, disconnected = false, pers
           <p className="rep-count-label" aria-hidden="true">reps</p>
           <div className="rep-bar" aria-hidden="true">
             <div
-              className={workout.phase === 'counting' && !disconnected ? 'rep-bar-fill rep-bar-fill-active' : 'rep-bar-fill'}
+              className="rep-bar-fill"
               style={{ transform: `scaleX(${percent / 100})` }}
             />
           </div>

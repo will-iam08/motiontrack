@@ -4,7 +4,7 @@ import { useAuth } from '../auth.jsx';
 import { formatDateTime } from '../lib/format.js';
 import { chipCounts, filterMessages } from '../lib/filters.js';
 import { BODY_MAX, parseReply, sourceLabel, unreadText } from '../lib/messages.js';
-import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, SearchField } from './common.jsx';
+import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, ScreenHeading, SearchField } from './common.jsx';
 
 const REFRESH_MS = 10000;
 const MAX_BACKOFF_MS = 30000;
@@ -204,7 +204,7 @@ export function MessageInbox({ onOpenPatient }) {
   return (
     <section className="card inbox" aria-labelledby="inbox-heading">
       <div className="console-head">
-        <h2 id="inbox-heading" className="inbox-title"><Icon name="mail" />Patient Message Inbox</h2>
+        <div id="inbox-heading" className="inbox-title"><ScreenHeading><Icon name="mail" />Patient Message Inbox</ScreenHeading></div>
         <span className={unread ? 'badge badge-active' : 'badge badge-readonly'} aria-live="polite">
           {unread ? <Icon name="mail" /> : <Icon name="check" />}{unreadText(unread)}
         </span>

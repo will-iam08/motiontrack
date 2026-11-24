@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { describeError } from '../api.js';
 import { STATUS_LABELS } from '../lib/format.js';
 
@@ -147,40 +147,23 @@ export function PlanCheck({ check }) {
   );
 }
 
-// Section tabs with an indicator that slides to the current tab. The current
-// tab is still marked with aria-current and a solid outline before the
-// indicator has been measured, so nothing depends on the animation.
+// The indicator follows the grid. Selecting a tab never measures the layout.
 export function TabNav({ views, current, onChange, label }) {
-  const navRef = useRef(null);
-  const [box, setBox] = useState(null);
-  const badgeKey = views.map(item => `${item.id}:${item.badge ?? 0}`).join('|');
-
-  useLayoutEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return undefined;
-    function measure() {
-      const active = nav.querySelector('[aria-current="page"]');
-      if (!active) return setBox(null);
-      return setBox({ x: active.offsetLeft, y: active.offsetTop, w: active.offsetWidth, h: active.offsetHeight });
-    }
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(nav);
-    return () => observer.disconnect();
-  }, [current, badgeKey]);
-
-  const style = box
-    ? { '--indicator-x': `${box.x}px`, '--indicator-y': `${box.y}px`, '--indicator-w': `${box.w}px`, '--indicator-h': `${box.h}px`, '--indicator-opacity': 1 }
-    : undefined;
+  const index = views.findIndex(item => item.id === current);
+  const style = {
+    '--tab-count': views.length,
+    '--tab-index': index,
+    '--tab-mobile-column': index % 2,
+    '--tab-mobile-row': Math.floor(index / 2),
+  };
 
   return (
-    <nav ref={navRef} className={box ? 'nav nav-measured' : 'nav'} aria-label={label} style={style}>
-      <span className="nav-indicator" aria-hidden="true" />
+    <nav className="nav" aria-label={label} style={style}>
+      {index >= 0 && <span className="nav-indicator" aria-hidden="true" />}
       {views.map(item => (
         <button key={item.id} type="button" className="nav-button" aria-current={current === item.id ? 'page' : undefined} onClick={() => onChange(item.id)}>
           <Icon name={item.icon} />
-          {item.label}
+          <span>{item.label}</span>
           {item.badge > 0 && (
             <>
               <span className="chip-count" aria-hidden="true">{item.badge}</span>

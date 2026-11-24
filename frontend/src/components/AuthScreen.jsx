@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { describeError } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Icon, ScreenHeading } from './common.jsx';
@@ -51,6 +51,19 @@ function portalRecoveryLink(message) {
   return null;
 }
 
+function jumpToDemo(event) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const demo = document.getElementById('interactive-demo');
+  if (!demo) return;
+  event.preventDefault();
+  if (window.location.hash !== '#interactive-demo') {
+    window.history.pushState(null, '', '#interactive-demo');
+  }
+  const motion = window.matchMedia('(prefers-reduced-motion: no-preference)').matches;
+  demo.focus({ preventScroll: true });
+  demo.scrollIntoView({ behavior: motion ? 'smooth' : 'auto' });
+}
+
 export function AuthScreen({ portal = 'patient' }) {
   const copy = PORTALS[portal] ?? PORTALS.patient;
   const patient = portal === 'patient';
@@ -67,6 +80,12 @@ export function AuthScreen({ portal = 'patient' }) {
   const [wrongPortal, setWrongPortal] = useState(null);
   const registering = patient && mode === 'register';
 
+  useLayoutEffect(() => {
+    if (patient && window.location.hash === '#interactive-demo') {
+      document.getElementById('interactive-demo')?.scrollIntoView();
+    }
+  }, [patient]);
+
   function switchMode(next) {
     setMode(next);
     setHasSwitchedMode(true);
@@ -80,18 +99,21 @@ export function AuthScreen({ portal = 'patient' }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (busy) return;
+    const form = event.currentTarget;
+    function showFieldError(field, message) {
+      setInvalidField(field);
+      setError(message);
+      form.elements.namedItem(field)?.focus();
+    }
     setWrongPortal(null);
     if (registering && (!name.trim() || name.trim().length > 80)) {
-      setInvalidField('name');
-      return setError('Enter your name (up to 80 characters).');
+      return showFieldError('name', 'Enter your name (up to 80 characters).');
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setInvalidField('email');
-      return setError('Enter a valid email address, for example name@example.com.');
+      return showFieldError('email', 'Enter a valid email address, for example name@example.com.');
     }
     if (password.length < 12 || password.length > 128) {
-      setInvalidField('password');
-      return setError('Your password must be 12 to 128 characters long.');
+      return showFieldError('password', 'Your password must be 12 to 128 characters long.');
     }
     setInvalidField(null);
     setBusy(true);
@@ -132,8 +154,8 @@ export function AuthScreen({ portal = 'patient' }) {
           </ul>
           {patient && (
             <div className="hero-actions">
-              <a className="button hero-demo-link" href="#interactive-demo">
-                <Icon name="play" />Try wrist-sensor rep demo ↓
+              <a className="button hero-demo-link" href="#interactive-demo" onClick={jumpToDemo}>
+                <Icon name="play" />Try the wrist-sensor demo
               </a>
             </div>
           )}
@@ -149,10 +171,11 @@ export function AuthScreen({ portal = 'patient' }) {
             </p>
             <form onSubmit={onSubmit} noValidate>
               {registering && (
-                <div className="field field-reveal">
+                <div className="field">
                 <label htmlFor="auth-name">Your name</label>
                 <input
                   id="auth-name"
+                  name="name"
                   type="text"
                   autoComplete="name"
                   maxLength={80}
@@ -168,8 +191,10 @@ export function AuthScreen({ portal = 'patient' }) {
               <label htmlFor="auth-email">Email address</label>
               <input
                 id="auth-email"
+                name="email"
                 type="email"
                 autoComplete="email"
+                spellCheck={false}
                 maxLength={254}
                 value={email}
                 onChange={e => { setEmail(e.target.value); if (invalidField === 'email') setInvalidField(null); }}
@@ -183,6 +208,7 @@ export function AuthScreen({ portal = 'patient' }) {
               <div className="password-row">
                 <input
                   id="auth-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete={registering ? 'new-password' : 'current-password'}
                   maxLength={128}

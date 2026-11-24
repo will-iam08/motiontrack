@@ -29,9 +29,9 @@
 
 ## Web Demo
 
-The walkthrough shows the wrist-sensor simulator, the patient’s live workout and progress charts, the doctor inbox and patient record, and the admin overview. It uses simulated sessions and sample accounts.
+The 31-second walkthrough shows which motions count in the wrist-sensor simulator, how patients follow a live workout, and what doctors and administrators see. It uses simulated sessions and sample accounts.
 
-<img src="./docs/assets/screenshots/motion-track-demo.gif" alt="Animated walkthrough of the Motion Track wearable demo and the Patient, Doctor, and Admin portals" width="760" />
+https://github.com/user-attachments/assets/94967187-dc10-49e1-82a1-2f25f1f75fb2
 
 [Download the Motion Track walkthrough (MP4)](./docs/assets/motion-track-demo.mp4?raw=true) · [View the simulator screenshot](./docs/assets/screenshots/interactive-showcase.png)
 
@@ -141,7 +141,7 @@ Portal loads, tabs, and patient-record navigation animate when reduced motion is
 
 | Patient — Live Rep Session (`/`) | Patient — 30-Day Progress (`/`) |
 | :---: | :---: |
-| <img src="./docs/assets/screenshots/patient-live.png" alt="Patient Overview showing the Arm Curl rep count and heart-rate checkpoints in the live workout HUD" width="100%" /> | <img src="./docs/assets/screenshots/patient-progress.png" alt="Patient Progress showing completed exercises and a daily bar chart" width="100%" /> |
+| <img src="./docs/assets/screenshots/patient-live.png" alt="Patient Overview showing the Arm Curl rep count and heart-rate checkpoints in the live workout HUD" width="100%" /> | <img src="./docs/assets/screenshots/patient-progress.png" alt="Patient Progress showing completed exercises and before-and-after heart-rate charts" width="100%" /> |
 | **Doctor — Patient Inbox (`/doctor`)** | **Admin — System Overview (`/admin`)** |
 | <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor portal showing the patient inbox and current exercise status" width="100%" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin overview showing patient, doctor, session, device, and unread message metrics" width="100%" /> |
 

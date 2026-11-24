@@ -852,19 +852,20 @@ export function InteractiveShowcase() {
       id="interactive-demo"
       className="showcase-section"
       aria-labelledby="showcase-heading"
+      tabIndex={-1}
     >
       <div className="showcase-stage">
         <div className="showcase-header">
           <div>
             <p className="showcase-eyebrow">
               <Icon name="pulse" />
-              Interactive Wearable Demo
+              Wearable simulator
             </p>
             <h2 id="showcase-heading">
-              Feel the 3-stage rep sensor before you strap it on.
+              How Motion Track counts reps
             </h2>
             <p className="showcase-lead">
-              Drag the wrist-strapped sensor or run a simulated rep to see how Motion Track checks range, filters partial lifts, and syncs heart-rate targets.
+              Move the virtual wrist or run a simulated rep to see when the OLED count changes.
             </p>
           </div>
 
@@ -1079,7 +1080,7 @@ export function InteractiveShowcase() {
                   strokeLinejoin="round"
                 />
                 <path
-                  className="showcase-ecg-sweep"
+                  className="showcase-ecg-trace"
                   d="M0 24 H36 L44 20 L50 24 H64 L69 27 L75 7 L81 36 L87 21 L92 24 H136 L144 19 L150 24 H164 L169 27 L175 7 L181 36 L187 21 L192 24 H236 L244 20 L250 24 H280"
                   fill="none"
                   stroke="#30d158"

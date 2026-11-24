@@ -107,6 +107,7 @@ export function PatientApp() {
 
   function changeView(next) {
     if (next === view) return;
+    window.scrollTo(0, 0);
     const prevIdx = views.findIndex(item => item.id === view);
     const nextIdx = views.findIndex(item => item.id === next);
     setTabDir(nextIdx > prevIdx ? 'forward' : 'backward');

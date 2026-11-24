@@ -525,17 +525,20 @@ export function AdminApp() {
   const [quickAssignPatientId, setQuickAssignPatientId] = useState('');
 
   const openPatient = useCallback(id => {
+    window.scrollTo(0, 0);
     setNavDir('push');
     setSelectedId(id);
   }, []);
 
   const closePatient = useCallback(() => {
+    window.scrollTo(0, 0);
     setNavDir('pop');
     setSelectedId(null);
   }, []);
 
   const switchView = useCallback(next => {
     if (next === view) return;
+    window.scrollTo(0, 0);
     const prevIdx = VIEWS.findIndex(item => item.id === view);
     const nextIdx = VIEWS.findIndex(item => item.id === next);
     setTabDir(nextIdx > prevIdx ? 'forward' : 'backward');
