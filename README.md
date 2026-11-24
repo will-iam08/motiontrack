@@ -99,7 +99,7 @@ For all three exercises, strap the `MPU6050` snugly **just above the wrist** of 
   <img src="./docs/assets/mobile-pulse.png" alt="Motion Track SwiftUI iPhone app measuring fingertip camera PPG pulse before workout" width="520" />
 </p>
 
-- **Bluetooth Workout Session (`mobile/MotionLog/`):** Calibrates the forearm sensor while resting, selects an exercise & rep target, mirrors live counts over BLE, and lets users finish early without losing completed reps.
+- **Bluetooth Workout Session (`mobile/MotionTrack/`):** Calibrates the forearm sensor while resting, selects an exercise & rep target, mirrors live counts over BLE, and lets users finish early without losing completed reps.
 - **Camera PPG Pulse Estimation:** Measures fingertip pulse waveform before and after sets (supporting front-camera + screen light on iPhone 17 Pro / Pro Max, or rear lens; see [`mobile/README.md#iphone-camera-pulse`](mobile/README.md#iphone-camera-pulse)).
 - **Offline Sync Queue + Dual Storage Backend:** `Motion Track` queues completed sets offline and retries idempotently over HTTPS to the Node + Express backend, storing records in local SQLite (`backend/data/ece198.sqlite`) or hosted Turso libSQL (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
 - **Legacy Wi-Fi Compatibility:** Direct ESP32-to-server Wi-Fi sketches under [`firmware/`](firmware/README.md) remain intact to preserve legacy device records alongside the unified Bluetooth + iPhone architecture in [`mobile/Firmware/`](mobile/setup-guide.md).
@@ -109,7 +109,7 @@ For all three exercises, strap the `MPU6050` snugly **just above the wrist** of 
 ```text
 motiontrack/
 ├── mobile/                 # SwiftUI iPhone app, BLE ESP32 firmware & host tests
-│   ├── MotionLog/          # BLE Tracker, Camera PPG (PulseCamera/PulseSignal) & Offline SyncCore
+│   ├── MotionTrack/        # BLE Tracker, Camera PPG (PulseCamera/PulseSignal) & Offline SyncCore
 │   ├── Firmware/           # PlatformIO BLE firmware + forearm/wrist rep counters
 │   └── tests/              # C++ rep counter simulations & Swift workout/pulse checks (run.sh)
 ├── firmware/               # Legacy Wi-Fi & single-file BLE sketch (MotionTrackSingle/) + host tests

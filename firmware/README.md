@@ -8,7 +8,7 @@ the target and uploads every step.
 ## Bluetooth build in one file (`MotionTrackSingle/`)
 
 [`MotionTrackSingle/MotionTrackSingle.ino`](MotionTrackSingle/MotionTrackSingle.ino) is the Bluetooth firmware
-for the Motion Log iPhone app as a single sketch, so it opens in the Arduino IDE without any companion files.
+for the Motion Track iPhone app as a single sketch, so it opens in the Arduino IDE without any companion files.
 It is generated from [`mobile/Firmware/MotionTrack`](../mobile/Firmware/MotionTrack): edit those files, then run
 `python3 firmware/tools/make_single_sketch.py` to rebuild it. Use ESP32 Arduino core 2.0.17, board **DOIT ESP32
 DEVKIT V1**, partition scheme **Huge APP**, and the SparkFun MAX3010x, Adafruit SSD1306, SoftWire and AsyncDelay

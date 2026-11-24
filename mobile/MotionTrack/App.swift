@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreBluetooth
 
-@main struct MotionLogApp: App {
+@main struct MotionTrackApp: App {
     var body: some Scene { WindowGroup { Dashboard() } }
 }
 
@@ -116,7 +116,7 @@ struct Dashboard: View {
                 }.padding(.horizontal, 20).padding(.vertical, 12)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Motion Log")
+            .navigationTitle("Motion Track")
             .sheet(isPresented: $showingAccount) {
                 AccountSheet(cloudSync: cloudSync)
             }

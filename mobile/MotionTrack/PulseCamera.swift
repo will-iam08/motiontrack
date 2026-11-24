@@ -31,7 +31,7 @@ private struct SignalFile: FileDocument {
 
 private final class CameraReader: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // Stop the previous session (including its torch) before opening the next camera.
-    private static let queue = DispatchQueue(label: "MotionLog.cameraPulse")
+    private static let queue = DispatchQueue(label: "MotionTrack.cameraPulse")
     private let position: AVCaptureDevice.Position
     private var camera: AVCaptureDevice?
     private var capture: AVCaptureSession?
@@ -428,7 +428,7 @@ struct CameraPulseView: View {
             }
         }
         .fileExporter(isPresented: $exportingSample, document: frame.sampleCSV.map(SignalFile.init(csv:)),
-                      contentType: .commaSeparatedText, defaultFilename: "MotionLog-camera-signal") { result in
+                      contentType: .commaSeparatedText, defaultFilename: "MotionTrack-camera-signal") { result in
             if case .failure(let error) = result, (error as NSError).code != NSUserCancelledError {
                 exportError = error.localizedDescription
             }

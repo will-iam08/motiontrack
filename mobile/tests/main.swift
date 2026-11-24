@@ -114,7 +114,7 @@ precondition(finishedStop.beforeBpm == nil && finishedStop.afterBpm == nil)
 precondition(recorder.observe(reading: stopped, now: Date(timeIntervalSince1970: 1017)).finished == nil)
 
 // 5. UploadQueueEngine: file persistence, deduplication, backoff retries, 401 session pause, and upload cleanup.
-let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("motionlog-queue-\(UUID().uuidString)")
+let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("motiontrack-queue-\(UUID().uuidString)")
 try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 defer { try? FileManager.default.removeItem(at: tempDir) }
 let queueFile = tempDir.appendingPathComponent("queue.json")
@@ -161,7 +161,7 @@ semaphore.wait()
 
 let diskCheck = UploadQueueEngine(store: FileUploadQueueStore(fileURL: queueFile))
 precondition(diskCheck.pendingCount() == 0)
-print("All Motion Log sync, mapping, queue and recorder tests passed.")
+print("All Motion Track sync, mapping, queue and recorder tests passed.")
 
 // Synthetic optical samples check estimator behavior, not clinical accuracy.
 func pulseTrace(_ bpm: Double?, _ hz: Double, _ offset: Double = 0) -> PulseSignal {

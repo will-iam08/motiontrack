@@ -2,7 +2,7 @@ import Foundation
 
 @main struct CameraWorkoutCheck {
     @MainActor static func main() {
-        let name = "MotionLogTest-" + UUID().uuidString
+        let name = "MotionTrackTest-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         let queue = UploadQueueEngine()

@@ -14,11 +14,11 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -I../Firmware/MotionTrack -I. accuracy.
 "$out/sensors"
 c++ -std=c++17 -I../Firmware/MotionTrack flow.cpp -o "$out/flow"
 "$out/flow" > "$out/snapshots.bin"
-swiftc ../MotionLog/PulseSignal.swift ../MotionLog/Tracker.swift ../MotionLog/SyncCore.swift main.swift -o "$out/decode"
+swiftc ../MotionTrack/PulseSignal.swift ../MotionTrack/Tracker.swift ../MotionTrack/SyncCore.swift main.swift -o "$out/decode"
 "$out/decode" "$out/snapshots.bin"
 
-swiftc ../MotionLog/Tracker.swift ../MotionLog/SyncCore.swift ../MotionLog/CloudSync.swift CameraWorkoutCheck.swift -o "$out/camera-workout"
+swiftc ../MotionTrack/Tracker.swift ../MotionTrack/SyncCore.swift ../MotionTrack/CloudSync.swift CameraWorkoutCheck.swift -o "$out/camera-workout"
 "$out/camera-workout"
 
-swiftc ../MotionLog/PulseSignal.swift ../MotionLog/PulseAttempt.swift PulseAttemptCheck.swift -o "$out/camera-attempt"
+swiftc ../MotionTrack/PulseSignal.swift ../MotionTrack/PulseAttempt.swift PulseAttemptCheck.swift -o "$out/camera-attempt"
 "$out/camera-attempt"

@@ -1,4 +1,4 @@
-# Motion Log wiring and setup guide
+# Motion Track wiring and setup guide
 
 This guide covers the classic USB-C ESP32 DOIT DevKit V1 with 4 MB of flash, an MPU6050 motion sensor, a MAX30102 heart-rate sensor and a 128 × 64 SSD1306 OLED. In the default Bluetooth Low Energy (BLE) mode, the iPhone sends workout commands and the ESP32 returns sensor readings. Powering the board starts Bluetooth advertising. You can connect without a network account, a device token or a serial command.
 
@@ -24,8 +24,8 @@ Uploading replaces the program on the board. Keep a copy of its source if you ne
 
 ## Install the iPhone app and run a workout
 
-1. Open `MotionLog.xcodeproj` in Xcode. Connect your iPhone, select it as the run destination, choose your development team under **Signing & Capabilities**, and press **Command-R**. If the bundle identifier is already taken, use a unique identifier. This build adds phone control for anyone using an earlier read-only version.
-2. Power the ESP32 and hold the MPU6050 still for about two seconds. In the app, select **My tracker → Scan for tracker → Motion Log**. Allow Bluetooth access if prompted.
+1. Open `MotionTrack.xcodeproj` in Xcode. Connect your iPhone, select it as the run destination, choose your development team under **Signing & Capabilities**, and press **Command-R**. If the bundle identifier is already taken, use a unique identifier. This build adds phone control for anyone using an earlier read-only version.
+2. Power the ESP32 and hold the MPU6050 still for about two seconds. In the app, select **My tracker → Scan for tracker → Motion Track**. On older firmware, select the name the tracker advertises. Allow Bluetooth access if prompted.
 3. Strap the MPU6050 on the working forearm just above the wrist. Choose **Biceps curl**, **Shoulder press** or **Back row**, set a target of 1–99 reps and tap **Start workout**. For presses and rows, hold the starting position until **Hold wrist still** clears from the OLED, then lift and lower at a steady pace.
 4. Rest a fingertip steadily on the MAX30102. A valid reading moves the device into rep counting. You can also tap **Skip heart-rate check**. Reaching the rep target starts the second heart-rate check, which you can take or skip. The app displays available before- and after-workout readings separately in beats per minute. Elapsed time includes both checks.
 5. Tap **End workout** to finish early. If the phone disconnects, the board continues the workout. Scan and reconnect to retrieve its current state. The optional button can also start or end a workout. Its initial setting is 10 biceps curls. Later presses reuse the most recently started exercise and target. Powering down the board clears the current session.
@@ -42,7 +42,7 @@ If the app displays **Hardware setup required**, read the OLED or open the 11520
 | Workout state | `45583198-0002-4BAD-9000-000000000065` | Read or subscribe to notifications |
 | Workout control | `45583198-0003-4BAD-9000-000000000065` | Write with response |
 
-Each notification contains a complete 17-byte version 3 snapshot with the workout stage, count, elapsed time, exercise, target, hardware status and available before/after heart rates. A command contains its version, operation (1 to start, 2 to stop, 3 to skip the current heart-rate check), exercise, target and expected stage. The stage check prevents delayed commands from advancing the wrong phase. The phone updates its workout view from the state the board reports. See the [firmware packet definitions](Firmware/MotionTrack/WorkoutWire.h) and [iOS Bluetooth client](MotionLog/Tracker.swift).
+Each notification contains a complete 17-byte version 3 snapshot with the workout stage, count, elapsed time, exercise, target, hardware status and available before/after heart rates. A command contains its version, operation (1 to start, 2 to stop, 3 to skip the current heart-rate check), exercise, target and expected stage. The stage check prevents delayed commands from advancing the wrong phase. The phone updates its workout view from the state the board reports. See the [firmware packet definitions](Firmware/MotionTrack/WorkoutWire.h) and [iOS Bluetooth client](MotionTrack/Tracker.swift).
 
 The optional `website` build runs the original website-controlled Wi-Fi/HTTP workflow. Copy [secrets.example.h](Firmware/MotionTrack/secrets.example.h) to `secrets.h` in the same directory and fill in your server address and credentials locally. Each firmware build uses one control mode. BLE workouts stay local to the tracker and phone. The integrated firmware draws on the [original sensor and website implementation](https://github.com/will-iam08/motiontrack-esp32/tree/cd07592a45e699d91b4bc5cfe206dcfe0179d262).
 

@@ -19,7 +19,7 @@
 /* Begin PBXFileReference section */
 		000000000000000000000007 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		000000000000000000000009 /* Tracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tracker.swift; sourceTree = "<group>"; };
-		00000000000000000000000C /* MotionLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MotionLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		00000000000000000000000C /* MotionTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MotionTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000012 /* SyncCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCore.swift; sourceTree = "<group>"; };
 		000000000000000000000014 /* CloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSync.swift; sourceTree = "<group>"; };
 		000000000000000000000032 /* PulseCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseCamera.swift; sourceTree = "<group>"; };
@@ -28,7 +28,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		00000000000000000000000B /* MotionLog */ = {
+		00000000000000000000000B /* MotionTrack */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000007 /* App.swift */,
@@ -39,13 +39,13 @@
 				000000000000000000000030 /* PulseSignal.swift */,
 				000000000000000000000034 /* PulseAttempt.swift */,
 			);
-			path = MotionLog;
+			path = MotionTrack;
 			sourceTree = "<group>";
 		};
 		00000000000000000000000D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				00000000000000000000000C /* MotionLog.app */,
+				00000000000000000000000C /* MotionTrack.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,7 +53,7 @@
 		00000000000000000000000E = {
 			isa = PBXGroup;
 			children = (
-				00000000000000000000000B /* MotionLog */,
+				00000000000000000000000B /* MotionTrack */,
 				00000000000000000000000D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,9 +61,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		000000000000000000000010 /* MotionLog */ = {
+		000000000000000000000010 /* MotionTrack */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 000000000000000000000006 /* Build configuration list for PBXNativeTarget "MotionLog" */;
+			buildConfigurationList = 000000000000000000000006 /* Build configuration list for PBXNativeTarget "MotionTrack" */;
 			buildPhases = (
 				00000000000000000000000F /* Sources */,
 			);
@@ -71,9 +71,9 @@
 			);
 			dependencies = (
 			);
-			name = MotionLog;
-			productName = MotionLog;
-			productReference = 00000000000000000000000C /* MotionLog.app */;
+			name = MotionTrack;
+			productName = MotionTrack;
+			productReference = 00000000000000000000000C /* MotionTrack.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -86,7 +86,7 @@
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 2700;
 			};
-			buildConfigurationList = 000000000000000000000003 /* Build configuration list for PBXProject "MotionLog" */;
+			buildConfigurationList = 000000000000000000000003 /* Build configuration list for PBXProject "MotionTrack" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				000000000000000000000010 /* MotionLog */,
+				000000000000000000000010 /* MotionTrack */,
 			);
 		};
 /* End PBXProject section */
@@ -214,14 +214,14 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Estimate your pulse from your fingertip before and after exercise.";
-				INFOPLIST_KEY_CFBundleDisplayName = "Motion Log";
+				INFOPLIST_KEY_CFBundleDisplayName = "Motion Track";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your exercise tracker to display repetitions and workout duration.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = edu.ece198.group65.MotionLog;
-				PRODUCT_NAME = MotionLog;
+				PRODUCT_NAME = MotionTrack;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -236,14 +236,14 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Estimate your pulse from your fingertip before and after exercise.";
-				INFOPLIST_KEY_CFBundleDisplayName = "Motion Log";
+				INFOPLIST_KEY_CFBundleDisplayName = "Motion Track";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your exercise tracker to display repetitions and workout duration.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = edu.ece198.group65.MotionLog;
-				PRODUCT_NAME = MotionLog;
+				PRODUCT_NAME = MotionTrack;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -252,7 +252,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		000000000000000000000003 /* Build configuration list for PBXProject "MotionLog" */ = {
+		000000000000000000000003 /* Build configuration list for PBXProject "MotionTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				000000000000000000000001 /* Debug */,
@@ -261,7 +261,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		000000000000000000000006 /* Build configuration list for PBXNativeTarget "MotionLog" */ = {
+		000000000000000000000006 /* Build configuration list for PBXNativeTarget "MotionTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				000000000000000000000004 /* Debug */,

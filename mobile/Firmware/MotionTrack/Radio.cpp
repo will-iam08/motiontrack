@@ -28,7 +28,7 @@ class Writes : public BLECharacteristicCallbacks {
 void begin() {
     commands = xQueueCreate(8,sizeof(workout::Command));
     configASSERT(commands);
-    BLEDevice::init("Motion Log");
+    BLEDevice::init("Motion Track");
     server=BLEDevice::createServer();
     server->setCallbacks(&links);
     auto* svc=server->createService(workout::service);
@@ -41,7 +41,7 @@ void begin() {
     BLEAdvertisementData adv,scan;
     adv.setFlags(0x06);
     adv.setCompleteServices(BLEUUID(workout::service));
-    scan.setName("Motion Log");
+    scan.setName("Motion Track");
     auto* ad=BLEDevice::getAdvertising();
     ad->setAdvertisementData(adv);
     ad->setScanResponseData(scan);
