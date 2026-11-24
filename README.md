@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Web%20App-React%2019%20%C2%B7%20Express%205%20%C2%B7%20SQLite%20%2F%20Turso-0f766e" alt="React 19 Express 5 SQLite Turso" />
 </p>
 
-[Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
+[Web Demo](#web-demo) · [Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
 
 <p>
   <img src="./docs/assets/wearable-hero.png" alt="Motion Track forearm wearable enclosure CAD model with OLED rep counter" width="780" />
@@ -24,6 +24,18 @@
 <sup><em>Group 65 "Diamond Ends" Fusion CAD forearm enclosure (OLED readout illustrative).</em></sup>
 
 </div>
+
+---
+
+## Web Demo
+
+The walkthrough shows the wrist-sensor simulator, the patient’s live workout and progress charts, the doctor inbox and patient record, and the admin overview. It uses simulated sessions and sample accounts.
+
+<img src="./docs/assets/screenshots/motion-track-demo.gif" alt="Animated walkthrough of the Motion Track wearable demo and the Patient, Doctor, and Admin portals" width="760" />
+
+[Download the Motion Track walkthrough (MP4)](./docs/assets/motion-track-demo.mp4?raw=true) · [View the simulator screenshot](./docs/assets/screenshots/interactive-showcase.png)
+
+To try it locally, open [`/#interactive-demo`](http://localhost:5173/#interactive-demo) after [starting the web app](#quick-start). Choose **Bicep curl**, **Shoulder press**, or **Back row**, then move the slider or select **Simulate 1 rep**. The OLED updates after a valid return. **Try shallow lift** shows how the simulator rejects a partial rep. The demo is available from the patient sign-in page without an account or wearable.
 
 ---
 
@@ -95,7 +107,7 @@ motiontrack/
 ├── backend/                # Node 24 + Express 5 + SQLite/Turso API, email bot, CLI manage.js & tests
 ├── frontend/               # React 19 + Vite dashboard (Patient /, Doctor /doctor, Admin /admin) + fake device
 ├── docs/
-│   ├── assets/             # App icon, CAD hero, hardware/software diagrams & portal screenshots
+│   ├── assets/             # App icon, CAD hero, architecture diagrams, web demo & portal screenshots
 │   ├── guides/             # End-user portal guide (user-guide.md) & full course demo script (demo.md)
 │   └── design/             # Approved system specification (2026-11-18-motiontrack-design.md)
 └── render.yaml             # One-click Render deployment blueprint (Node 24 + Turso env config)
@@ -125,15 +137,17 @@ motiontrack/
 
 ## Web Portals
 
+Portal loads, tabs, and patient-record navigation animate when reduced motion is off. Buttons, forms, and reply editors give visual feedback as you use them.
+
 | Patient — Live Rep Session (`/`) | Patient — 30-Day Progress (`/`) |
 | :---: | :---: |
-| <img src="./docs/assets/screenshots/patient-live.png" alt="Patient live workout view showing doctor care plan and real-time 7 of 10 Arm Curl counter" width="100%" /> | <img src="./docs/assets/screenshots/patient-progress.png" alt="Patient progress dashboard displaying completed exercises and daily bar chart" width="100%" /> |
-| **Doctor — Care Plans & Inbox (`/doctor`)** | **Admin — System Overview (`/admin`)** |
-| <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor console displaying patient message inbox and live exercise status" width="100%" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin overview showing patient, doctor, session, device, and unread message metrics" width="100%" /> |
+| <img src="./docs/assets/screenshots/patient-live.png" alt="Patient Overview showing the Arm Curl rep count and heart-rate checkpoints in the live workout HUD" width="100%" /> | <img src="./docs/assets/screenshots/patient-progress.png" alt="Patient Progress showing completed exercises and a daily bar chart" width="100%" /> |
+| **Doctor — Patient Inbox (`/doctor`)** | **Admin — System Overview (`/admin`)** |
+| <img src="./docs/assets/screenshots/doctor-console.png" alt="Doctor portal showing the patient inbox and current exercise status" width="100%" /> | <img src="./docs/assets/screenshots/admin-overview.png" alt="Admin overview showing patient, doctor, session, device, and unread message metrics" width="100%" /> |
 
-- **Patient (`/`):** Live Workout HUD (`Before BPM → Counting → After BPM → Done` progress bar + rep counter) during active `Motion Track` sessions, auto-collapsed iPhone setup with 1-click copyable Server URL once synced, care plan badges and set durations on recent sets, doctor reply badge on Messages, and Progress charts for completed exercises, reps, **Active time**, and **Before vs. After Heart Rate** against the prescribed target BPM band.
-- **Doctor (`/doctor`):** 4-tile clinical cohort summary and triage filter chips (`Live now`, `Needs attention`, `Unread messages`, `Inactive (7+ d)`), collapsible message inbox replies with replace warnings, and a unified patient record view combining the Live Workout HUD, Care Plan editor (with quick target presets and unsaved-changes leave guard), Progress & Heart Rate charts, patient-filtered messages, and printable clinical history.
-- **Admin (`/admin`) & Auth:** Quick-assign links for unassigned patients on Overview and Assignments, searchable patient/assignment/doctor lists, Show/Hide password toggles, and direct wrong-portal recovery links on sign-in.
+- **Patient (`/`)** follows active workouts in **Overview**, reviews synced sets in **History**, checks exercise totals and before-and-after heart rate in **Progress**, and contacts their doctor in **Messages**.
+- **Doctor (`/doctor`)** replies to patient messages, filters assigned patients by activity and follow-up status, and opens each patient’s record to review workouts, set rep and heart-rate targets, and print clinical history.
+- **Admin (`/admin`)** reviews clinic activity, assigns patients to doctors, and manages doctor accounts.
 
 ---
 
@@ -157,7 +171,7 @@ test -f .env.local || cp .env.example .env.local
 npm run dev
 ```
 
-Visit **http://localhost:5173/** (Patient), **/doctor**, or **/admin**, or run the synthetic ESP32 emulator (`cd frontend && DEVICE_TOKEN='...' npm run fake-device`) as walked through in [`docs/guides/demo.md`](docs/guides/demo.md).
+Visit **http://localhost:5173/** (Patient), **/doctor**, or **/admin**. The patient landing page includes the [interactive wearable demo](http://localhost:5173/#interactive-demo). For the full system walkthrough, see the [course demo guide](docs/guides/demo.md).
 
 ### Test Suites
 

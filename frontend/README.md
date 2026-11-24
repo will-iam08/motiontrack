@@ -21,6 +21,12 @@ Signing in on the wrong entry point is refused by the server ("This is a patient
 sign-in.", or the doctor or admin version) with an inline link directly to the matching sign-in portal. Internally the
 roles are `participant` (patient), `staff` (doctor) and `admin`; that is what the API and CLI call them.
 
+## Interactive wearable demo
+
+The patient sign-in page has a [wrist-sensor demo](http://localhost:5173/#interactive-demo) open to signed-out visitors. Switch between Bicep curl, Shoulder press, and Back row, then drag the slider or run a simulated rep. The OLED preview shows the rep count and prompts you to hold still before presses and rows. Try a shallow lift to see a rejected rep.
+
+Portal loads, tab switches, and patient-record navigation respect the system’s reduced-motion preference. The [repository walkthrough](../README.md#web-demo) shows the demo and all three portals.
+
 ## Requirements
 
 - Node.js 24 or newer for the backend (the frontend itself builds on Node 22+) and npm.
@@ -90,20 +96,15 @@ unset STAFF_PASSWORD
 npm run manage -- assign doctor@example.com patient@example.com
 ```
 
-## Trying it without hardware: the fake device
+## Legacy Wi-Fi device testing
 
-`scripts/fake-device.mjs` pretends to be the ESP32 and sends **made-up** heart rates and reps to the real backend
-device routes, using the same protocol as the firmware. It is a test tool only and says nothing about the real
-device, its sensors or its firmware.
+`scripts/fake-device.mjs` sends simulated heart rates and reps to the legacy Wi-Fi device API. Use the [device API](../backend/README.md#devices-participant) to register a test device and get its token. Then use the [session API](../backend/README.md#sessions-and-exercises-participant) to start a session and an exercise for that device.
 
-It works on **one exercise per run**: start the exercise on the website, then run the script with the device token
-the website showed once when you added the device. It prints each step, runs before-check-in, reps, and
-after-check-in, and exits when the exercise is closed (done, stopped or session ended). Run it again for the next
-exercise. The token is never printed.
+Run the script with the device token. It reports each phase and exits when the exercise finishes, stops, or its session ends. Run it again for the next exercise.
 
 ```bash
 cd frontend
-DEVICE_TOKEN='<token from My devices>' npm run fake-device -- --help
+npm run fake-device -- --help
 ```
 
 | Flag | Default | Effect |
@@ -112,12 +113,12 @@ DEVICE_TOKEN='<token from My devices>' npm run fake-device -- --help
 | `--bpm-after N` | 104 | Heart rate sent for the check-in after the exercise (1-300). |
 | `--rep-ms N` | 800 | Milliseconds per repetition (50-60000). |
 | `--weak-ms N` | 0 | Report "weak signal" for N ms in each check-in before it succeeds. |
-| `--no-after-bpm` | off | Never finish the after-check-in: keep reporting "waiting for finger" / "weak signal" until the website's Skip reading is used (the exercise ends Incomplete). |
+| `--no-after-bpm` | off | Keep reporting "waiting for finger" or "weak signal" until the reading is skipped through the workout API. |
 | `--retry-last` | off | After the first counted rep, resend that upload byte for byte and print the server's reply (`duplicate`); the count does not change. |
 
 `API_BASE_URL` (environment variable) overrides the backend address (default `http://127.0.0.1:3000`).
 
-Example runs, one per exercise. Start the matching exercise on the website first (with a target of 5 reps, say):
+Start the matching exercise through the session API before running each example.
 
 ```bash
 # Arm Curl: normal run
@@ -135,7 +136,7 @@ DEVICE_TOKEN='<token>' npm run fake-device -- --retry-last
 ```
 
 ```bash
-# Any exercise: never take the after reading; press "Skip reading" on the website to end it Incomplete
+# Any exercise: leave the after reading pending, then call POST /api/workouts/:id/skip-reading
 DEVICE_TOKEN='<token>' npm run fake-device -- --no-after-bpm
 ```
 
@@ -146,7 +147,6 @@ The full course demo is in [../docs/guides/demo.md](../docs/guides/demo.md).
 - **Sign-in.** The account token is kept in memory only; reloading signs you out. Password fields include an accessible
   Show/Hide toggle, failed sign-in attempts preserve the typed password for quick correction, and Sign-out revokes the
   session on the server (any 401 returns to the sign-in screen).
-- **Device tokens** are shown once, kept only while that panel is open, and never stored or logged by the site.
 - **Live exercise.** The open exercise is refreshed in a single awaited loop (never overlapping); lists refresh about
   every 5 seconds, and failures back off exponentially while keeping the last data on screen. During live workouts, both
   Patient Overview and Doctor Patient Detail show the read-only 4-step **Live Workout HUD** (with "Not responding" after
