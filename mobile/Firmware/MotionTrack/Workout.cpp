@@ -47,14 +47,14 @@ BackRowCounter backRow;
 struct Exercise {
   const char *name;
   const char *startPrompt;
-  TiltRepCounter &counter;
+  RepCounter &counter;
 };
 
 // Index order matches the website ids: arm_curl, shoulder_press, back_row.
 const Exercise exercises[] = {
-  {"Arm Curl", "Mount on the forearm. Start with the arm lowered, then curl and lower.", armCurl},
-  {"Shoulder Press", "Mount on the upper arm. Start at shoulder level, press up, then lower.", shoulderPress},
-  {"Back Row", "Mount on the upper arm. Start with the arm hanging, pull back, then lower.", backRow},
+  {"Arm Curl", "Strap above the wrist. Start with the arm lowered, then curl and lower.", armCurl},
+  {"Shoulder Press", "Hold the wrist still at shoulder level. Press up, then lower to the start.", shoulderPress},
+  {"Back Row", "Hold the working wrist still with the arm hanging. Pull toward the hip, then lower to the start.", backRow},
 };
 const Exercise *exercise = &exercises[0];
 
@@ -433,7 +433,7 @@ void runMotion(unsigned long now) {
     showShallowWarning = false;
     return;
   }
-  TiltRepCounter &counter = exercise->counter;
+  RepCounter &counter = exercise->counter;
   if (counter.update(gyro[0] - gyroBias[0], gyro[1] - gyroBias[1], gyro[2] - gyroBias[2], acceleration, now)) {
     if (benchMode) {
       Serial.printf("%s counted: %lu\n", exercise->name, static_cast<unsigned long>(counter.count()));
@@ -509,8 +509,9 @@ void drawIdle() {
   else if (!deviceLink.serverOk()) display.print("Wi-Fi OK, no server");
   else display.print("Wi-Fi OK, server OK");
 #else
-  centered("Motion Log", 2, 8);
-  centered("Ready for iPhone", 1, 44);
+  centered("Motion", 2, 4);
+  centered("Track", 2, 22);
+  centered("Ready for iPhone", 1, 50);
 #endif
 }
 
@@ -550,6 +551,8 @@ void drawCounting() {
     display.setTextSize(1);
     display.setCursor(0, 56);
     display.print("MPU disconnected");
+  } else if (!exercise->counter.ready()) {
+    centered("Hold wrist still", 1, 56);
   }
 }
 

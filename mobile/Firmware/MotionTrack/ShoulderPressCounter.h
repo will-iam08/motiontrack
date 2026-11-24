@@ -1,10 +1,9 @@
 #pragma once
 
-#include "TiltRepCounter.h"
+#include "WristRepCounter.h"
 
-class ShoulderPressCounter : public TiltRepCounter {
+class ShoulderPressCounter : public WristRepCounter {
  public:
-  // shortcut: upper-arm tilt targets are provisional until tested with the mounted sensor.
-  // Raise at least 60 degrees from rest, then lower to within 20 degrees of it.
-  ShoulderPressCounter() : TiltRepCounter(60.0f, 20.0f) {}
+  // shortcut: verify the filtered range threshold against manual counts on the worn tracker.
+  ShoulderPressCounter() : WristRepCounter(0.15f) {}
 };

@@ -17,8 +17,6 @@
 #include <random>
 #include <vector>
 #include "ArmCurlCounter.h"
-#include "BackRowCounter.h"
-#include "ShoulderPressCounter.h"
 #include "legacy/TiltRepCounterV5.h"
 
 namespace {
@@ -130,7 +128,7 @@ struct Population {
 
 // minTilt/returnTilt: the current counters. v5Min/v5Return: the previous counter's own settings.
 struct Exercise { const char *name; float minTilt, returnTilt, v5Min, v5Return; };
-const Exercise EXERCISES[] = {{"Biceps curl", 45, 20, 35, 20}, {"Shoulder press", 60, 20, 50, 20}, {"Back row", 40, 12, 30, 12}};
+const Exercise EXERCISES[] = {{"Biceps curl", 45, 20, 35, 20}};
 
 template <class Counter> Counter makeCounter(const Exercise &ex) { return Counter(ex.minTilt, ex.returnTilt); }
 template <> TiltRepCounterV5 makeCounter<TiltRepCounterV5>(const Exercise &ex) { return TiltRepCounterV5(ex.v5Min, ex.v5Return); }
@@ -295,7 +293,7 @@ bool report(const char *label, bool strict, bool stress = false) {
 
 int main(int argc, char **argv) {
   const bool compare = argc > 1 && strcmp(argv[1], "--compare") == 0;
-  if (compare) report<TiltRepCounterV5>("Previous counter (v5, its own 35/50/30° settings)", false);
+  if (compare) report<TiltRepCounterV5>("Previous curl counter (v5, 35°)", false);
   bool ok = report<TiltRepCounter>("Current counter", true);
   gSensor = {3.0, 0.8, 0.025, 0.3};
   if (compare) report<TiltRepCounterV5>("Previous counter, stress (2x noise and bias, unseen seeds)", false, true);

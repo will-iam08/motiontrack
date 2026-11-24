@@ -3,11 +3,24 @@
 #include <math.h>
 #include <stdio.h>
 #include "ArmCurlCounter.h"
-#include "BackRowCounter.h"
-#include "ShoulderPressCounter.h"
 
 static int failures = 0;
 #define CHECK(name, cond) do { if (cond) printf("ok   %s\n", name); else { printf("FAIL %s\n", name); ++failures; } } while (0)
+
+// Play a continuous piece of a movement at the firmware's 50 Hz sample rate.
+static void move(TiltRepCounter &counter, uint32_t &now, float start, float end, uint32_t ms,
+                 float tremor = 0.0f, bool sideways = false) {
+  const uint32_t dt = 20;
+  const float speed = (end - start) * 1000.0f / ms;
+  for (uint32_t t = dt; t <= ms; t += dt) {
+    const float angle = start + (end - start) * t / ms;
+    const float rad = angle * 3.14159265f / 180.0f;
+    const float accel[3] = {sideways ? -sinf(rad) : 0.0f, sideways ? 0.0f : sinf(rad), cosf(rad)};
+    const float rate = speed + tremor * sinf(now * 0.06f);
+    counter.update(sideways ? 0.0f : rate, sideways ? rate : 0.0f, 0.0f, accel, now);
+    now += dt;
+  }
+}
 
 // Feeds one movement: rotate about X up to `peak` degrees over `upMs`, hold,
 // then back down to `endAngle` over `downMs`. `tremor` adds a shake in deg/s.
@@ -15,20 +28,11 @@ static int failures = 0;
 static uint32_t rep(TiltRepCounter &counter, uint32_t &now, float peak, uint32_t upMs, uint32_t downMs,
                     float endAngle = 0.0f, float tremor = 0.0f) {
   const uint32_t before = counter.count();
-  const uint32_t dt = 20;  // 50 Hz, as on the tracker
-  float angle = 0.0f;
-  auto sample = [&](float speed) {
-    angle += speed * dt / 1000.0f;
-    const float rad = angle * 3.14159265f / 180.0f;
-    const float accel[3] = {0.0f, sinf(rad), cosf(rad)};
-    counter.update(speed + tremor * sinf(now * 0.06f), 0.0f, 0.0f, accel, now);
-    now += dt;
-  };
-  for (int i = 0; i < 25; ++i) sample(0.0f);
-  for (uint32_t t = 0; t < upMs; t += dt) sample(peak * 1000.0f / upMs);
-  for (int i = 0; i < 10; ++i) sample(0.0f);
-  for (uint32_t t = 0; t < downMs; t += dt) sample(-(peak - endAngle) * 1000.0f / downMs);
-  for (int i = 0; i < 25; ++i) sample(0.0f);
+  move(counter, now, 0.0f, 0.0f, 500, tremor);
+  move(counter, now, 0.0f, peak, upMs, tremor);
+  move(counter, now, peak, peak, 200, tremor);
+  move(counter, now, peak, endAngle, downMs, tremor);
+  move(counter, now, endAngle, endAngle, 500, tremor);
   return counter.count() - before;
 }
 
@@ -49,16 +53,27 @@ int main() {
     CHECK("curl: arm left raised does not count", rep(curl, now, 70.0f, 1200, 800, 40.0f) == 0);
   }
   {
-    ShoulderPressCounter press;
+    ArmCurlCounter curl;
     uint32_t now = 1000;
-    CHECK("press: 70-degree raise counts", rep(press, now, 70.0f, 1500, 1500) == 1);
-    CHECK("press: 30-degree shrug does not count", rep(press, now, 30.0f, 700, 700) == 0);
+    move(curl, now, 0.0f, 0.0f, 600);
+    move(curl, now, 0.0f, 50.0f, 220, 0.0f, true);
+    move(curl, now, 50.0f, 0.0f, 220, 0.0f, true);
+    move(curl, now, 0.0f, 0.0f, 500);
+    CHECK("curl: fast sideways flick does not count", curl.count() == 0);
+    move(curl, now, 0.0f, 72.0f, 360);
+    move(curl, now, 72.0f, 0.0f, 360);
+    CHECK("curl: quick full rep counts after a rejected motion in another direction", curl.count() == 1);
   }
   {
-    BackRowCounter row;
+    ArmCurlCounter curl;
     uint32_t now = 1000;
-    CHECK("row: 45-degree pull counts", rep(row, now, 45.0f, 1000, 1000) == 1);
-    CHECK("row: wobble does not count", rep(row, now, 8.0f, 200, 200) == 0);
+    CHECK("curl: full rep with a slightly raised return counts", rep(curl, now, 75.0f, 1000, 1000, 18.0f) == 1);
+    for (int i = 0; i < 2; ++i) {
+      move(curl, now, 18.0f, 51.0f, 800);
+      move(curl, now, 51.0f, 18.0f, 800);
+      move(curl, now, 18.0f, 18.0f, 400);
+    }
+    CHECK("curl: two short lifts from a raised bottom do not add reps", curl.count() == 1);
   }
   if (failures) {
     printf("%d motion test(s) failed\n", failures);

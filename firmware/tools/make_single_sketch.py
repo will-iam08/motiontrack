@@ -20,7 +20,8 @@ OUTPUT = os.path.join(ROOT, "firmware", "MotionTrackSingle", "MotionTrackSingle.
 
 # Dependency order: each file only uses names defined in the files before it.
 ORDER = [
-    "WorkoutWire.h", "TiltRepCounter.h", "ArmCurlCounter.h", "ShoulderPressCounter.h",
+    "WorkoutWire.h", "RepCounter.h", "GravityEstimate.h", "TiltRepCounter.h",
+    "WristRepCounter.h", "ArmCurlCounter.h", "ShoulderPressCounter.h",
     "BackRowCounter.h", "HeartCheckIn.h", "config.h", "ExerciseFlow.h", "EventOutbox.h",
     "LocalSession.h", "Radio.h", "Radio.cpp", "Workout.cpp",
 ]
