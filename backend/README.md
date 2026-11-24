@@ -450,13 +450,13 @@ became required still has the old published passwords on those accounts; delete 
 all its data) and seed again, or do not expose it.
 
 LAN access, a live domain through Cloudflare Tunnel and the email bot are set up in
-[../docs/demo.md](../docs/demo.md) sections 6 and 7.
+[../docs/guides/demo.md](../docs/guides/demo.md) sections 6 and 7.
 
 ### Real ESP32
 
 Set `HOST=0.0.0.0` in `.env`, restart, and point the firmware's `API_BASE_URL` at `http://<laptop LAN IP>:3000`
 (`localhost` on the ESP32 is the ESP32). The laptop firewall must allow the port. See [../firmware/README.md](../firmware/README.md)
-and [../docs/demo.md](../docs/demo.md).
+and [../docs/guides/demo.md](../docs/guides/demo.md).
 
 ### Scope
 

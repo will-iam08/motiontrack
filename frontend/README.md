@@ -45,7 +45,7 @@ Open **http://localhost:5173**. The dev server is pinned to port 5173 and fails 
 The website calls the API at `/api` on its own address and the dev (and preview) server forwards those calls to the
 backend, so the same build works on `localhost`, on the LAN and through a tunnel. `npm run dev:lan` (or
 `npm run preview:lan` after a build) listens on every network interface so phones on the same Wi-Fi can open it; see
-[../docs/demo.md](../docs/demo.md) section 6 for the LAN and a Cloudflare Tunnel.
+[../docs/guides/demo.md](../docs/guides/demo.md) section 6 for the LAN and a Cloudflare Tunnel.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -133,7 +133,7 @@ DEVICE_TOKEN='<token>' npm run fake-device -- --retry-last
 DEVICE_TOKEN='<token>' npm run fake-device -- --no-after-bpm
 ```
 
-The full course demo is in [../docs/demo.md](../docs/demo.md).
+The full course demo is in [../docs/guides/demo.md](../docs/guides/demo.md).
 
 ## How the website behaves
 
