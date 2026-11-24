@@ -73,10 +73,28 @@ function PlanNumber({ id, label, hint, value, error, onChange, min, max }) {
   );
 }
 
+const PLAN_PRESETS = [
+  {
+    id: 'beginner',
+    label: 'Beginner (8 reps · 60–110 bpm)',
+    values: { arm_curl_reps: '8', shoulder_press_reps: '8', back_row_reps: '8', target_bpm_min: '60', target_bpm_max: '110' },
+  },
+  {
+    id: 'standard',
+    label: 'Standard (12 reps · 60–120 bpm)',
+    values: { arm_curl_reps: '12', shoulder_press_reps: '12', back_row_reps: '12', target_bpm_min: '60', target_bpm_max: '120' },
+  },
+  {
+    id: 'progressive',
+    label: 'Progressive (15 reps · 65–130 bpm)',
+    values: { arm_curl_reps: '15', shoulder_press_reps: '15', back_row_reps: '15', target_bpm_min: '65', target_bpm_max: '130' },
+  },
+];
+
 // The doctor's (or admin's) editor for one patient's care plan. Calls
 // onSaved(plan) after loading and after each save so the session tables use
 // the current targets; pass a stable function such as a state setter.
-export function CarePlanForm({ patient, onSaved }) {
+export function CarePlanForm({ patient, onSaved, onDirtyChange }) {
   const { api } = useAuth();
   const path = `/api/participants/${patient.id}/plan`;
   const [plan, setPlan] = useState(undefined);
@@ -103,10 +121,44 @@ export function CarePlanForm({ patient, onSaved }) {
     return () => controller.abort();
   }, [api, path, attempt, onSaved]);
 
+  const baseline = plan === undefined ? null : planFormValues(plan);
+  const isDirty = Boolean(baseline && Object.keys(baseline).some(key => values[key] !== baseline[key]));
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
   const set = field => value => {
     setValues(previous => ({ ...previous, [field]: value }));
+    setErrors(previous => (previous[field] ? { ...previous, [field]: undefined } : previous));
     setSaved('');
   };
+
+  function applyPreset(presetValues) {
+    setValues(previous => ({ ...previous, ...presetValues }));
+    setErrors({});
+    setSaveError('');
+    setSaved('');
+  }
+
+  function clearTargets() {
+    applyPreset({
+      arm_curl_reps: '',
+      shoulder_press_reps: '',
+      back_row_reps: '',
+      target_bpm_min: '',
+      target_bpm_max: '',
+    });
+  }
+
+  function discardChanges() {
+    setValues(planFormValues(plan));
+    setErrors({});
+    setSaveError('');
+    setSaved('');
+  }
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -134,10 +186,12 @@ export function CarePlanForm({ patient, onSaved }) {
 
   return (
     <section className="plan-editor" aria-labelledby="plan-editor-heading">
-      <h3 id="plan-editor-heading"><Icon name="clipboard" />Care Plan: Notes, Target Reps &amp; Heart Rate</h3>
+      <div className="heading-row">
+        <h3 id="plan-editor-heading"><Icon name="clipboard" />Care Plan: Notes, Target Reps &amp; Heart Rate</h3>
+        {isDirty && <span className="badge badge-pending"><Icon name="clock" />Unsaved changes</span>}
+      </div>
       <p>
-        {patient.name} sees these notes and targets on their Session screen, and the target reps are filled in
-        for them when they choose an exercise.
+        {patient.name} sees these notes and targets on their Overview screen, and each completed set is compared with these targets.
       </p>
       {loadError && <ErrorMessage error={loadError} onRetry={() => setAttempt(n => n + 1)} />}
       {plan === undefined && !loadError && <Loading label="Loading the care plan…" />}
@@ -157,11 +211,22 @@ export function CarePlanForm({ patient, onSaved }) {
               maxLength={NOTES_MAX}
               value={values.notes}
               onChange={event => set('notes')(event.target.value)}
-              aria-describedby="plan-notes-hint"
+              aria-describedby={errors.notes ? 'plan-notes-hint plan-notes-error' : 'plan-notes-hint'}
               aria-invalid={errors.notes ? true : undefined}
             />
             <p className="hint" id="plan-notes-hint">Up to {NOTES_MAX} characters ({values.notes.length} used).</p>
-            {errors.notes && <p className="field-error"><span aria-hidden="true">⚠ </span>{errors.notes}</p>}
+            {errors.notes && <p className="field-error" id="plan-notes-error"><span aria-hidden="true">⚠ </span>{errors.notes}</p>}
+          </div>
+          <div className="preset-row" role="group" aria-label="Care plan target presets">
+            <span className="preset-label">Quick target presets:</span>
+            {PLAN_PRESETS.map(preset => (
+              <button key={preset.id} type="button" className="button button-small" onClick={() => applyPreset(preset.values)}>
+                {preset.label}
+              </button>
+            ))}
+            <button type="button" className="button button-small button-quiet" onClick={clearTargets}>
+              Clear targets
+            </button>
           </div>
           <fieldset>
             <legend>Target reps per exercise</legend>
@@ -193,9 +258,16 @@ export function CarePlanForm({ patient, onSaved }) {
             {saveError && <ErrorMessage error={saveError} />}
             {saved && <p className="alert alert-success" role="status"><span aria-hidden="true">✓ </span>{saved}</p>}
           </div>
-          <button type="submit" className="button button-primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save care plan'}
-          </button>
+          <div className="button-row">
+            <button type="submit" className="button button-primary" disabled={busy}>
+              {busy ? 'Saving…' : 'Save care plan'}
+            </button>
+            {isDirty && (
+              <button type="button" className="button button-quiet" disabled={busy} onClick={discardChanges}>
+                Discard changes
+              </button>
+            )}
+          </div>
         </form>
       )}
     </section>

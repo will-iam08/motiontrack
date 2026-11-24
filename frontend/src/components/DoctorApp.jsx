@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth.jsx';
 import { chipCounts, filterPatients } from '../lib/filters.js';
+import { formatDateTime } from '../lib/format.js';
 import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, ScreenHeading, SearchField } from './common.jsx';
 import { MessageInbox } from './MessageInbox.jsx';
 import { PatientDetail } from './PatientDetail.jsx';
@@ -61,14 +62,18 @@ export function DoctorApp() {
         listError={error}
         onRetry={retry}
         onBack={() => setSelectedId(null)}
+        showMessages
       />
     );
   }
 
-  const liveCount = patients?.filter(patient => patient.active_session_id).length ?? 0;
-  const searched = filterPatients(patients ?? [], { query: rosterQuery });
+  const allPatients = patients ?? [];
+  const liveCount = allPatients.filter(patient => patient.active_session_id).length;
+  const attentionCount = filterPatients(allPatients, { chip: 'attention' }).length;
+  const unreadMessagesCount = allPatients.reduce((sum, patient) => sum + (patient.unread_messages ?? 0), 0);
+  const searched = filterPatients(allPatients, { query: rosterQuery });
   const shown = filterPatients(searched, { chip: rosterChip });
-  const counts = chipCounts(searched, ['all', 'live'], (items, chip) => filterPatients(items, { chip }));
+  const counts = chipCounts(searched, ['all', 'live', 'attention', 'unread', 'inactive'], (items, chip) => filterPatients(items, { chip }));
 
   return (
     <>
@@ -93,6 +98,14 @@ export function DoctorApp() {
                 <p className="tile-label"><Icon name="pulse" />Live now</p>
                 <p className="tile-value">{liveCount}</p>
               </div>
+              <div className="tile">
+                <p className="tile-label"><Icon name="alert" />Needs attention</p>
+                <p className="tile-value">{attentionCount}</p>
+              </div>
+              <div className="tile">
+                <p className="tile-label"><Icon name="mail" />Unread messages</p>
+                <p className="tile-value">{unreadMessagesCount}</p>
+              </div>
             </div>
           )}
           {error && patients && (
@@ -112,7 +125,13 @@ export function DoctorApp() {
                 value={rosterChip}
                 onChange={setRosterChip}
                 counts={counts}
-                options={[{ id: 'all', label: 'All' }, { id: 'live', label: 'Live now', icon: 'pulse' }]}
+                options={[
+                  { id: 'all', label: 'All' },
+                  { id: 'live', label: 'Live now', icon: 'pulse' },
+                  { id: 'attention', label: 'Needs attention', icon: 'alert' },
+                  { id: 'unread', label: 'Unread messages', icon: 'mail' },
+                  { id: 'inactive', label: 'Inactive (7+ d)', icon: 'clock' },
+                ]}
               />
             </div>
           )}
@@ -127,30 +146,63 @@ export function DoctorApp() {
           {shown.length > 0 && (
             <ul className="list roster" aria-label="Assigned patients">
               <li className="roster-head" aria-hidden="true"><span>Patient</span><span>Status</span><span /></li>
-              {shown.map(patient => (
-                <li key={patient.id} className={patient.active_session_id ? 'roster-row roster-row-live' : 'roster-row'}>
-                  <span className="person">
-                    <Avatar name={patient.name} />
-                    <span className="person-text">
-                      <strong className="block">{patient.name}</strong>
-                      <span className="hint block">{patient.email}</span>
+              {shown.map(patient => {
+                const sessionsCount = patient.session_count ?? 0;
+                const hasSignals = (patient.unread_messages ?? 0) > 0
+                  || (patient.out_of_range_bpm_count ?? 0) > 0
+                  || (patient.incomplete_workouts ?? 0) > 0;
+                return (
+                  <li key={patient.id} className={patient.active_session_id ? 'roster-row roster-row-live' : 'roster-row'}>
+                    <span className="person">
+                      <Avatar name={patient.name} />
+                      <span className="person-text">
+                        <strong className="block">{patient.name}</strong>
+                        <span className="hint block">{patient.email}</span>
+                      </span>
                     </span>
-                  </span>
-                  <span>
-                    {patient.active_session_id
-                      ? <LiveBadge />
-                      : <span className="idle-text"><Icon name="clock" />No session running</span>}
-                  </span>
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    aria-label={`View workouts for ${patient.name}`}
-                    onClick={() => setSelectedId(patient.id)}
-                  >
-                    View workouts
-                  </button>
-                </li>
-              ))}
+                    <span className="roster-cell">
+                      {patient.active_session_id ? (
+                        <LiveBadge />
+                      ) : (
+                        <span className="idle-text">
+                          <Icon name="clock" />
+                          {patient.last_session_at ? `Last ${formatDateTime(patient.last_session_at)}` : 'No sessions yet'}
+                        </span>
+                      )}
+                      <span className="hint block">
+                        {sessionsCount} session{sessionsCount === 1 ? '' : 's'}
+                      </span>
+                      {hasSignals && (
+                        <span className="roster-signals">
+                          {patient.unread_messages > 0 && (
+                            <span className="badge badge-active">
+                              <Icon name="mail" />{patient.unread_messages} unread
+                            </span>
+                          )}
+                          {patient.out_of_range_bpm_count > 0 && (
+                            <span className="badge badge-incomplete">
+                              <Icon name="heart" />{patient.out_of_range_bpm_count} BPM alert{patient.out_of_range_bpm_count === 1 ? '' : 's'}
+                            </span>
+                          )}
+                          {patient.incomplete_workouts > 0 && (
+                            <span className="badge badge-incomplete">
+                              <Icon name="alert" />{patient.incomplete_workouts} incomplete
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      aria-label={`View workouts for ${patient.name}`}
+                      onClick={() => setSelectedId(patient.id)}
+                    >
+                      View workouts
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

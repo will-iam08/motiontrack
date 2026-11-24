@@ -7,14 +7,17 @@ import { BODY_MAX, parseReply, sourceLabel, unreadText } from '../lib/messages.j
 import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, SearchField } from './common.jsx';
 
 const REFRESH_MS = 10000;
+const MAX_BACKOFF_MS = 30000;
 const PAGE = 10;
 
-function InboxMessage({ message, onChanged, onOpenPatient }) {
+export function InboxMessage({ message, onChanged, onOpenPatient }) {
   const { api } = useAuth();
+  const [replyOpen, setReplyOpen] = useState(false);
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const replyId = `reply-${message.id}`;
+  const errorId = `reply-error-${message.id}`;
 
   async function update(body, what) {
     setBusy(what);
@@ -35,7 +38,10 @@ function InboxMessage({ message, onChanged, onOpenPatient }) {
     event.preventDefault();
     const parsed = parseReply(reply);
     if (parsed.error) return setError(parsed.error);
-    if (await update({ doctor_reply: parsed.reply }, 'reply')) setReply('');
+    if (await update({ doctor_reply: parsed.reply }, 'reply')) {
+      setReply('');
+      setReplyOpen(false);
+    }
     return undefined;
   }
 
@@ -65,27 +71,69 @@ function InboxMessage({ message, onChanged, onOpenPatient }) {
           <p className="message-body">{message.doctor_reply}</p>
         </div>
       )}
-      <form onSubmit={sendReply} noValidate className="reply-form">
-        <div className="field">
-          <label htmlFor={replyId}>{message.doctor_reply ? 'Send a new reply' : 'Reply'} to {message.participant_name}</label>
-          <textarea id={replyId} rows={3} maxLength={BODY_MAX} value={reply} onChange={e => setReply(e.target.value)} />
-        </div>
-        {error && <ErrorMessage error={error} />}
+      <div className="reply-form">
         <div className="button-row">
-          <button type="submit" className="button button-primary" disabled={Boolean(busy)}>
-            <Icon name="send" />{busy === 'reply' ? 'Sending…' : 'Send reply'}
+          <button
+            type="button"
+            className="button button-small"
+            aria-expanded={replyOpen}
+            aria-controls={replyOpen ? `${replyId}-form` : undefined}
+            onClick={() => { setReplyOpen(open => !open); setError(''); }}
+          >
+            <Icon name="send" />{message.doctor_reply ? 'Edit reply' : 'Reply'}
           </button>
-          <button type="button" className="button" disabled={Boolean(busy)}
+          <button type="button" className="button button-small" disabled={Boolean(busy)}
             onClick={() => update({ is_read: !message.is_read }, 'read')}
             aria-label={`${message.is_read ? 'Mark as unread' : 'Mark as read'}: ${message.subject} from ${message.participant_name}`}>
             {message.is_read ? 'Mark as unread' : 'Mark as read'}
           </button>
-          <button type="button" className="button button-quiet" onClick={() => onOpenPatient(message.participant_id)}
-            aria-label={`Open the patient record for ${message.participant_name}`}>
-            <Icon name="user" />Open patient record
-          </button>
+          {onOpenPatient && (
+            <button type="button" className="button button-small button-quiet" onClick={() => onOpenPatient(message.participant_id)}
+              aria-label={`Open the patient record for ${message.participant_name}`}>
+              <Icon name="user" />Open patient record
+            </button>
+          )}
         </div>
-      </form>
+        {!replyOpen && error && <ErrorMessage error={error} />}
+        {replyOpen && (
+          <form id={`${replyId}-form`} onSubmit={sendReply} noValidate className="reply-editor">
+            {message.doctor_reply && (
+              <p className="hint" id={`${replyId}-replace-hint`}>
+                Sending a new reply replaces the previous reply shown above.
+              </p>
+            )}
+            <div className="field">
+              <label htmlFor={replyId}>{message.doctor_reply ? 'New reply' : 'Reply'} to {message.participant_name}</label>
+              <textarea
+                id={replyId}
+                rows={3}
+                maxLength={BODY_MAX}
+                value={reply}
+                onChange={e => { setReply(e.target.value); if (error) setError(''); }}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={[
+                  message.doctor_reply ? `${replyId}-replace-hint` : '',
+                  error ? errorId : '',
+                ].filter(Boolean).join(' ') || undefined}
+              />
+            </div>
+            {error && <div id={errorId}><ErrorMessage error={error} /></div>}
+            <div className="button-row">
+              <button type="submit" className="button button-primary button-small" disabled={Boolean(busy)}>
+                <Icon name="send" />{busy === 'reply' ? 'Sending…' : 'Send reply'}
+              </button>
+              <button
+                type="button"
+                className="button button-small button-quiet"
+                disabled={Boolean(busy)}
+                onClick={() => { setReplyOpen(false); setError(''); }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </li>
   );
 }
@@ -107,18 +155,24 @@ export function MessageInbox({ onOpenPatient }) {
     const controller = new AbortController();
     let stopped = false;
     let timer;
+    let failCount = 0;
     (async () => {
       while (!stopped) {
+        let waitMs = REFRESH_MS;
         try {
           const result = await api('/api/doctor/messages', { query: { unread_only: 0 }, signal: controller.signal });
           if (stopped) return;
+          failCount = 0;
           setData(result);
           setError(null);
         } catch (failure) {
           if (stopped || failure?.name === 'AbortError' || failure?.status === 401) return;
           setError(failure);
+          if (failure.status !== 0 && failure.status !== 429 && failure.status < 500) return;
+          failCount += 1;
+          waitMs = Math.min(MAX_BACKOFF_MS, REFRESH_MS * (2 ** Math.min(failCount, 3)));
         }
-        await new Promise(resolve => { timer = setTimeout(resolve, REFRESH_MS); });
+        await new Promise(resolve => { timer = setTimeout(resolve, waitMs); });
       }
     })();
     return () => {
@@ -129,11 +183,15 @@ export function MessageInbox({ onOpenPatient }) {
   }, [api, tick]);
 
   function changed(message) {
-    setData(previous => previous && {
-      ...previous,
-      messages: previous.messages.map(item => (item.id === message.id ? { ...item, ...message } : item)),
+    setData(previous => {
+      if (!previous) return previous;
+      const nextMessages = previous.messages.map(item => (item.id === message.id ? { ...item, ...message } : item));
+      return {
+        ...previous,
+        messages: nextMessages,
+        unread_count: nextMessages.filter(item => !item.is_read).length,
+      };
     });
-    refresh();
   }
 
   const unread = data?.unread_count ?? 0;

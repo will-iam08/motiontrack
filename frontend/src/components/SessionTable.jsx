@@ -1,4 +1,4 @@
-import { formatTime } from '../lib/format.js';
+import { formatClock, formatTime } from '../lib/format.js';
 import { bpmLabel, deviceLine, isOpen, isStale, notRespondingText, statusLabel } from '../lib/exerciseStatus.js';
 import { bpmCheck, hasTargets, repsCheck } from '../lib/carePlan.js';
 import { PlanCheck, StatusBadge } from './common.jsx';
@@ -19,6 +19,7 @@ function TimesCell({ workout }) {
     <>
       <span className="block">Started: {workout.started_at ? formatTime(workout.started_at) : 'Not yet'}</span>
       <span className="block">Ended: {workout.ended_at ? formatTime(workout.ended_at) : open ? 'Not yet' : '—'}</span>
+      {workout.elapsed_seconds > 0 && <span className="hint block">Duration: {formatClock(workout.elapsed_seconds)}</span>}
     </>
   );
 }

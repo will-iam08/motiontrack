@@ -42,41 +42,73 @@ const PORTALS = {
   },
 };
 
+function portalRecoveryLink(message) {
+  const lower = String(message ?? '').toLowerCase();
+  if (lower.includes('doctor')) return { href: '/doctor', label: 'Go to doctor sign-in' };
+  if (lower.includes('patient')) return { href: '/', label: 'Go to patient sign-in' };
+  if (lower.includes('admin')) return { href: '/admin', label: 'Go to admin sign-in' };
+  return null;
+}
+
 export function AuthScreen({ portal = 'patient' }) {
   const copy = PORTALS[portal] ?? PORTALS.patient;
   const patient = portal === 'patient';
   const { login, register, notice } = useAuth();
   const [mode, setMode] = useState('login');
+  const [hasSwitchedMode, setHasSwitchedMode] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [invalidField, setInvalidField] = useState(null);
+  const [wrongPortal, setWrongPortal] = useState(null);
   const registering = patient && mode === 'register';
 
   function switchMode(next) {
     setMode(next);
+    setHasSwitchedMode(true);
     setError('');
+    setInvalidField(null);
+    setWrongPortal(null);
     setPassword('');
+    setShowPassword(false);
   }
 
   async function onSubmit(event) {
     event.preventDefault();
     if (busy) return;
-    if (registering && (!name.trim() || name.trim().length > 80)) return setError('Enter your name (up to 80 characters).');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Enter a valid email address, for example name@example.com.');
-    if (password.length < 12 || password.length > 128) return setError('Your password must be 12 to 128 characters long.');
+    setWrongPortal(null);
+    if (registering && (!name.trim() || name.trim().length > 80)) {
+      setInvalidField('name');
+      return setError('Enter your name (up to 80 characters).');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setInvalidField('email');
+      return setError('Enter a valid email address, for example name@example.com.');
+    }
+    if (password.length < 12 || password.length > 128) {
+      setInvalidField('password');
+      return setError('Your password must be 12 to 128 characters long.');
+    }
+    setInvalidField(null);
     setBusy(true);
     setError('');
     try {
       if (registering) await register(name.trim(), email.trim(), password);
       else await login(email.trim(), password, portal);
     } catch (failure) {
-      setPassword('');
-      if (failure.status === 403 && failure.message) setError(failure.message);
-      else if (failure.status === 401) setError('That email or password is not correct. Please try again.');
-      else if (failure.status === 409) setError('An account with this email already exists. Sign in instead.');
-      else setError(describeError(failure));
+      if (failure.status === 403 && failure.message) {
+        setError(failure.message);
+        setWrongPortal(portalRecoveryLink(failure.message));
+      } else if (failure.status === 401) {
+        setError('That email or password is not correct. Please try again.');
+      } else if (failure.status === 409) {
+        setError('An account with this email already exists. Sign in instead.');
+      } else {
+        setError(describeError(failure));
+      }
       setBusy(false);
     }
     return undefined;
@@ -100,7 +132,7 @@ export function AuthScreen({ portal = 'patient' }) {
       <section className="card auth-card" aria-labelledby="auth-heading">
         {notice && <p className="alert alert-info" role="status">{notice}</p>}
         <div id="auth-heading">
-          <ScreenHeading level={2} key={mode}>{registering ? 'Create your account' : copy.heading}</ScreenHeading>
+          <ScreenHeading level={2} key={mode} autoFocus={hasSwitchedMode}>{registering ? 'Create your account' : copy.heading}</ScreenHeading>
         </div>
         <p>
           {registering ? 'Create a patient account to record your movement exercises.' : copy.intro}
@@ -109,28 +141,68 @@ export function AuthScreen({ portal = 'patient' }) {
           {registering && (
             <div className="field">
               <label htmlFor="auth-name">Your name</label>
-              <input id="auth-name" type="text" autoComplete="name" maxLength={80} value={name} onChange={e => setName(e.target.value)} required />
+              <input
+                id="auth-name"
+                type="text"
+                autoComplete="name"
+                maxLength={80}
+                value={name}
+                onChange={e => { setName(e.target.value); if (invalidField === 'name') setInvalidField(null); }}
+                aria-invalid={invalidField === 'name' ? true : undefined}
+                aria-describedby={invalidField === 'name' && error ? 'auth-error' : undefined}
+                required
+              />
             </div>
           )}
           <div className="field">
             <label htmlFor="auth-email">Email address</label>
-            <input id="auth-email" type="email" autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} required />
+            <input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              maxLength={254}
+              value={email}
+              onChange={e => { setEmail(e.target.value); if (invalidField === 'email') setInvalidField(null); }}
+              aria-invalid={invalidField === 'email' ? true : undefined}
+              aria-describedby={invalidField === 'email' && error ? 'auth-error' : undefined}
+              required
+            />
           </div>
           <div className="field">
             <label htmlFor="auth-password">Password</label>
-            <input
-              id="auth-password"
-              type="password"
-              autoComplete={registering ? 'new-password' : 'current-password'}
-              maxLength={128}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              aria-describedby="auth-password-hint"
-              required
-            />
+            <div className="password-row">
+              <input
+                id="auth-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete={registering ? 'new-password' : 'current-password'}
+                maxLength={128}
+                value={password}
+                onChange={e => { setPassword(e.target.value); if (invalidField === 'password') setInvalidField(null); }}
+                aria-invalid={invalidField === 'password' ? true : undefined}
+                aria-describedby={invalidField === 'password' && error ? 'auth-password-hint auth-error' : 'auth-password-hint'}
+                required
+              />
+              <button
+                type="button"
+                className="button button-small password-toggle"
+                aria-pressed={showPassword}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword(visible => !visible)}
+              >
+                <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+                <span>{showPassword ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
             <p className="hint" id="auth-password-hint">Passwords are 12 to 128 characters long.</p>
           </div>
-          {error && <p className="alert alert-error" role="alert"><span aria-hidden="true">⚠ </span>{error}</p>}
+          {error && (
+            <p id="auth-error" className="alert alert-error" role="alert">
+              <span aria-hidden="true">⚠ </span>{error}
+              {wrongPortal && (
+                <> <a href={wrongPortal.href}>{wrongPortal.label}</a></>
+              )}
+            </p>
+          )}
           <button type="submit" className="button button-primary button-wide" disabled={busy}>
             {busy ? 'Please wait…' : registering ? 'Create account' : 'Sign in'}
           </button>

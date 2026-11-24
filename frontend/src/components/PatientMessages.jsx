@@ -13,14 +13,19 @@ function AskForm({ onSent }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [invalidField, setInvalidField] = useState(null);
   const [sent, setSent] = useState('');
 
   async function onSubmit(event) {
     event.preventDefault();
     const parsed = parseQuestion({ subject, body });
-    if (parsed.error) return setError(parsed.error);
+    if (parsed.error) {
+      setInvalidField(/subject/i.test(parsed.error) ? 'subject' : 'body');
+      return setError(parsed.error);
+    }
     setBusy(true);
     setError('');
+    setInvalidField(null);
     setSent('');
     try {
       await api('/api/messages', { method: 'POST', body: parsed.body });
@@ -36,19 +41,51 @@ function AskForm({ onSent }) {
     return undefined;
   }
 
+  const subjectError = invalidField === 'subject';
+  const bodyError = invalidField === 'body';
+
   return (
     <form onSubmit={onSubmit} noValidate className="message-form">
       <div className="field">
         <label htmlFor="question-subject">Subject (optional)</label>
-        <input id="question-subject" type="text" maxLength={SUBJECT_MAX} value={subject} onChange={e => setSubject(e.target.value)} />
+        <input
+          id="question-subject"
+          type="text"
+          maxLength={SUBJECT_MAX}
+          value={subject}
+          onChange={e => {
+            setSubject(e.target.value);
+            setSent('');
+            setError('');
+            if (invalidField === 'subject') setInvalidField(null);
+          }}
+          aria-invalid={subjectError ? true : undefined}
+          aria-describedby={subjectError && error ? 'question-error' : undefined}
+        />
       </div>
       <div className="field">
         <label htmlFor="question-body">Your question</label>
-        <textarea id="question-body" rows={5} maxLength={BODY_MAX} value={body}
-          onChange={e => { setBody(e.target.value); setSent(''); }} aria-describedby="question-body-hint" />
+        <textarea
+          id="question-body"
+          rows={5}
+          maxLength={BODY_MAX}
+          value={body}
+          onChange={e => {
+            setBody(e.target.value);
+            setSent('');
+            setError('');
+            if (invalidField === 'body') setInvalidField(null);
+          }}
+          aria-invalid={bodyError ? true : undefined}
+          aria-describedby={bodyError && error ? 'question-body-hint question-error' : 'question-body-hint'}
+        />
         <p className="hint" id="question-body-hint">Up to {BODY_MAX} characters. Your doctor reads it in their message inbox.</p>
       </div>
-      {error && <ErrorMessage error={error} />}
+      {error && (
+        <div id="question-error">
+          <ErrorMessage error={error} />
+        </div>
+      )}
       {sent && <p className="alert alert-success" role="status"><span aria-hidden="true">✓ </span>{sent}</p>}
       <button type="submit" className="button button-primary" disabled={busy}>
         <Icon name="send" />{busy ? 'Sending…' : 'Send question'}
@@ -93,7 +130,7 @@ export function PatientMessages() {
         <div className="alert alert-info">
           <p>
             <Icon name="mail" /> You can also email <strong>MotionTrack Care Bot</strong> (
-            <a href={`mailto:${encodeURIComponent(`MotionTrack Care Bot <${bot.address}>`)}`}>
+            <a href={`mailto:${encodeURIComponent(bot.address)}`}>
               <strong className="break">{bot.address}</strong>
             </a>
             ) from <strong className="break">{bot.email}</strong>. Emails from other addresses are not delivered.

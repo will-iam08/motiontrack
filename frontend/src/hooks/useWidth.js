@@ -9,7 +9,7 @@ export function useWidth(fallback = 640) {
   const [width, setWidth] = useState(fallback);
   useEffect(() => {
     if (!element) return undefined;
-    const update = () => setWidth(Math.max(280, Math.floor(element.clientWidth)));
+    const update = () => setWidth(Math.max(220, Math.floor(element.clientWidth)));
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);

@@ -37,6 +37,8 @@ const ICON_PATHS = {
   plus: 'M12 5v14M5 12h14',
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   minus: 'M5 12h14',
+  eye: 'M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+  eyeOff: 'M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a16.8 16.8 0 0 1-3.2 4.3M6.6 6.6C4 8.3 2 12 2 12s3.6 6.5 10 6.5a10 10 0 0 0 4-.8',
 };
 
 export function Icon({ name, className = 'icon' }) {
@@ -97,9 +99,11 @@ export function LiveBadge({ label = 'Live now' }) {
 
 // A heading that takes keyboard focus when its screen appears, so keyboard and
 // screen-reader users land at the start of the new content.
-export function ScreenHeading({ level = 2, children }) {
+export function ScreenHeading({ level = 2, autoFocus = true, children }) {
   const ref = useRef(null);
-  useEffect(() => { ref.current?.focus(); }, []);
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus();
+  }, [autoFocus]);
   const Tag = `h${level}`;
   return <Tag ref={ref} tabIndex={-1} className="screen-heading">{children}</Tag>;
 }
@@ -149,6 +153,7 @@ export function PlanCheck({ check }) {
 export function TabNav({ views, current, onChange, label }) {
   const navRef = useRef(null);
   const [box, setBox] = useState(null);
+  const badgeKey = views.map(item => `${item.id}:${item.badge ?? 0}`).join('|');
 
   useLayoutEffect(() => {
     const nav = navRef.current;
@@ -163,7 +168,7 @@ export function TabNav({ views, current, onChange, label }) {
     const observer = new ResizeObserver(measure);
     observer.observe(nav);
     return () => observer.disconnect();
-  }, [current]);
+  }, [current, badgeKey]);
 
   const style = box
     ? { '--indicator-x': `${box.x}px`, '--indicator-y': `${box.y}px`, '--indicator-w': `${box.w}px`, '--indicator-h': `${box.h}px`, '--indicator-opacity': 1 }
@@ -174,7 +179,14 @@ export function TabNav({ views, current, onChange, label }) {
       <span className="nav-indicator" aria-hidden="true" />
       {views.map(item => (
         <button key={item.id} type="button" className="nav-button" aria-current={current === item.id ? 'page' : undefined} onClick={() => onChange(item.id)}>
-          <Icon name={item.icon} />{item.label}
+          <Icon name={item.icon} />
+          {item.label}
+          {item.badge > 0 && (
+            <>
+              <span className="chip-count" aria-hidden="true">{item.badge}</span>
+              <span className="visually-hidden"> ({item.badgeLabel ?? `${item.badge} new`})</span>
+            </>
+          )}
         </button>
       ))}
     </nav>

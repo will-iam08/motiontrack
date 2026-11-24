@@ -195,9 +195,23 @@ export function createApp({ db, corsOrigin = DEFAULT_CORS_ORIGINS, bot = {}, sta
     const totals = await db.get(`SELECT COUNT(*) AS completed_workouts, COALESCE(SUM(repetitions), 0) AS total_repetitions,
       COALESCE(SUM(elapsed_seconds), 0) AS total_duration_seconds FROM workouts WHERE ${where}`, ...params);
     const daily = await db.all(`SELECT substr(COALESCE(started_at, created_at), 1, 10) AS date, exercise_name, COUNT(*) AS workouts,
-      SUM(repetitions) AS repetitions, SUM(elapsed_seconds) AS duration_seconds FROM workouts WHERE ${where}
+      SUM(repetitions) AS repetitions, SUM(elapsed_seconds) AS duration_seconds,
+      ROUND(AVG(before_bpm)) AS avg_before_bpm, ROUND(AVG(after_bpm)) AS avg_after_bpm
+      FROM workouts WHERE ${where}
       GROUP BY date, exercise_name COLLATE NOCASE ORDER BY date, exercise_name`, ...params);
-    return { ...totals, daily };
+    const heart_rate = await db.all(`SELECT id, date, recorded_at, exercise_name, repetitions, target_reps, elapsed_seconds, before_bpm, after_bpm
+      FROM (
+        SELECT id,
+          substr(COALESCE(started_at, created_at), 1, 10) AS date,
+          COALESCE(started_at, created_at) AS recorded_at,
+          exercise_name, repetitions, target_reps, elapsed_seconds, before_bpm, after_bpm
+        FROM workouts
+        WHERE ${where} AND (before_bpm IS NOT NULL OR after_bpm IS NOT NULL)
+        ORDER BY COALESCE(started_at, created_at) DESC, id DESC
+        LIMIT 40
+      ) recent
+      ORDER BY recorded_at ASC, id ASC`, ...params);
+    return { ...totals, daily, heart_rate };
   }
 
   app.get('/api/health', async (req, res) => {
@@ -318,11 +332,32 @@ export function createApp({ db, corsOrigin = DEFAULT_CORS_ORIGINS, bot = {}, sta
   });
 
   app.get('/api/participants', userAuth, staff, async (req, res) => {
-    const rows = await db.all(`SELECT u.*, (SELECT s.id FROM exercise_sessions s
-      WHERE s.participant_id = u.id AND s.status = 'active') AS active_session_id
+    const rows = await db.all(`SELECT u.*,
+        (SELECT s.id FROM exercise_sessions s WHERE s.participant_id = u.id AND s.status = 'active') AS active_session_id,
+        (SELECT COUNT(*) FROM exercise_sessions s WHERE s.participant_id = u.id) AS session_count,
+        (SELECT MAX(s.created_at) FROM exercise_sessions s WHERE s.participant_id = u.id) AS last_session_at,
+        (SELECT COUNT(*) FROM workouts w WHERE w.participant_id = u.id) AS workout_count,
+        (SELECT COUNT(*) FROM workouts w WHERE w.participant_id = u.id AND w.status = 'incomplete') AS incomplete_workouts,
+        (SELECT COUNT(*) FROM patient_messages m WHERE m.participant_id = u.id AND m.is_read = 0) AS unread_messages,
+        (SELECT COUNT(*) FROM workouts w
+          JOIN patient_plans pp ON pp.participant_id = w.participant_id
+          WHERE w.participant_id = u.id AND w.after_bpm IS NOT NULL
+            AND ((pp.target_bpm_max IS NOT NULL AND w.after_bpm > pp.target_bpm_max)
+              OR (pp.target_bpm_min IS NOT NULL AND w.after_bpm < pp.target_bpm_min))) AS out_of_range_bpm_count
       FROM users u JOIN staff_participants sp ON sp.participant_id = u.id
       WHERE sp.staff_id = ? ORDER BY u.name, u.id`, req.user.id);
-    res.json({ participants: rows.map(row => ({ ...publicUser(row), active_session_id: row.active_session_id })) });
+    res.json({
+      participants: rows.map(row => ({
+        ...publicUser(row),
+        active_session_id: row.active_session_id,
+        session_count: row.session_count,
+        last_session_at: row.last_session_at,
+        workout_count: row.workout_count,
+        incomplete_workouts: row.incomplete_workouts,
+        unread_messages: row.unread_messages,
+        out_of_range_bpm_count: row.out_of_range_bpm_count,
+      })),
+    });
   });
   app.get('/api/participants/:id/workouts', userAuth, staffOrAdmin, assignedParticipant,
     async (req, res) => res.json(await workoutList(req.params.id, req.query)));

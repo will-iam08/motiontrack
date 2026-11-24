@@ -27,11 +27,23 @@ const PATIENT_CHIPS = {
   all: () => true,
   live: patient => Boolean(patient.active_session_id),
   unassigned: (patient, doctorsByPatient) => (doctorsByPatient?.get(patient.id) ?? []).length === 0,
+  attention: patient => (patient.incomplete_workouts ?? 0) > 0 || (patient.out_of_range_bpm_count ?? 0) > 0,
+  unread: patient => (patient.unread_messages ?? 0) > 0,
+  inactive: (patient, _doctorsByPatient, now = Date.now()) => {
+    if (patient.active_session_id) return false;
+    if (!patient.last_session_at) return true;
+    const ms = Date.parse(patient.last_session_at);
+    return Number.isFinite(ms) ? (now - ms) > 7 * 86400000 : true;
+  },
 };
 
-export function filterPatients(patients, { chip = 'all', query = '', doctorsByPatient } = {}) {
+export function filterPatients(patients, { chip = 'all', query = '', doctorsByPatient, now = Date.now() } = {}) {
   const keep = PATIENT_CHIPS[chip] ?? PATIENT_CHIPS.all;
-  return list(patients).filter(patient => keep(patient, doctorsByPatient) && matchesQuery(query, patient.name, patient.email));
+  return list(patients).filter(patient => keep(patient, doctorsByPatient, now) && matchesQuery(query, patient.name, patient.email));
+}
+
+export function filterDoctors(doctors, { query = '' } = {}) {
+  return list(doctors).filter(doctor => matchesQuery(query, doctor.name, doctor.email));
 }
 
 // Messages from GET /api/doctor/messages.

@@ -250,3 +250,87 @@ test('app live endpoint conflicts with an open Wi-Fi device session but still ac
   })).data;
   assert.equal(uploaded.workout.exercise_id, 'shoulder_press');
 });
+
+test('participants summary counts and progress heart_rate / daily BPM averages are accurate', async t => {
+  const f = await fixture(t);
+  const patient = await f.register('summary-patient@example.com');
+  const doc = await f.staff('summary-doc@example.com', [patient.user.id]);
+
+  await f.request(`/api/participants/${patient.user.id}/plan`, {
+    method: 'PUT',
+    token: doc.token,
+    body: { target_bpm_min: 70, target_bpm_max: 115 },
+  });
+
+  const postSet = (body) => f.request('/api/app/sets', { method: 'POST', token: patient.token, body, status: 201 });
+
+  // Completed in-range set on Nov 18
+  await postSet(sampleSet({
+    exercise: 1,
+    before_bpm: 70,
+    after_bpm: 100,
+    started_at: '2026-11-18T09:00:00.000Z',
+    ended_at: '2026-11-18T09:00:42.000Z',
+  }));
+  // Completed out-of-range (above max) set on Nov 19
+  await postSet(sampleSet({
+    exercise: 1,
+    before_bpm: 80,
+    after_bpm: 130,
+    started_at: '2026-11-19T10:00:00.000Z',
+    ended_at: '2026-11-19T10:00:42.000Z',
+  }));
+  // Completed out-of-range (below min) set on Nov 19
+  await postSet(sampleSet({
+    exercise: 1,
+    before_bpm: 64,
+    after_bpm: 65,
+    started_at: '2026-11-19T12:00:00.000Z',
+    ended_at: '2026-11-19T12:00:42.000Z',
+  }));
+  // Incomplete set (skipped after_bpm so it doesn't add to out_of_range_bpm_count)
+  await postSet(sampleSet({
+    exercise: 3,
+    target_reps: 10,
+    repetitions: 6,
+    after_bpm: null,
+    after_skipped: true,
+    started_at: '2026-11-20T08:00:00.000Z',
+    ended_at: '2026-11-20T08:00:30.000Z',
+  }));
+
+  await f.request('/api/messages', {
+    method: 'POST',
+    token: patient.token,
+    body: { subject: 'Follow-up', body: 'Felt dizzy after the second set.' },
+    status: 201,
+  });
+
+  const { participants } = (await f.request('/api/participants', { token: doc.token })).data;
+  assert.equal(participants.length, 1);
+  assert.equal(participants[0].session_count, 4);
+  assert.ok(Date.parse(participants[0].last_session_at));
+  assert.equal(participants[0].workout_count, 4);
+  assert.equal(participants[0].incomplete_workouts, 1);
+  assert.equal(participants[0].unread_messages, 1);
+  assert.equal(participants[0].out_of_range_bpm_count, 2);
+
+  for (const path of ['/api/progress?kind=reps', `/api/participants/${patient.user.id}/progress?kind=reps`]) {
+    const token = path.startsWith('/api/participants') ? doc.token : patient.token;
+    const progress = (await f.request(path, { token })).data;
+    assert.equal(progress.completed_workouts, 3);
+    assert.equal(progress.daily.length, 2);
+    assert.equal(progress.daily[0].date, '2026-11-18');
+    assert.equal(progress.daily[0].avg_before_bpm, 70);
+    assert.equal(progress.daily[0].avg_after_bpm, 100);
+    assert.equal(progress.daily[1].date, '2026-11-19');
+    assert.equal(progress.daily[1].avg_before_bpm, 72);
+    assert.equal(progress.daily[1].avg_after_bpm, 98);
+    assert.equal(progress.heart_rate.length, 3);
+    assert.deepEqual(
+      progress.heart_rate.map(point => point.recorded_at),
+      ['2026-11-18T09:00:00.000Z', '2026-11-19T10:00:00.000Z', '2026-11-19T12:00:00.000Z'],
+    );
+    assert.equal(progress.heart_rate[1].after_bpm, 130);
+  }
+});

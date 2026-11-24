@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatClock, formatDurationWords } from './format.js';
-import { buildBuckets, filterDaily, sumRows } from './progress.js';
+import { buildBuckets, filterDaily, filterHeartRate, sumRows } from './progress.js';
 
 describe('formatting', () => {
   it('formats clocks and durations', () => {
@@ -31,5 +31,20 @@ describe('progress ranges', () => {
     expect(all.monthly).toBe(true);
     expect(all.buckets.map(b => b.key)).toEqual(['2026-07', '2026-08', '2026-09', '2026-10', '2026-11']);
     expect(all.buckets[4]).toMatchObject({ workouts: 4, repetitions: 55 });
+  });
+
+  it('filters heart rate points by UTC date range and handles empty input', () => {
+    const points = [
+      { id: '1', date: '2026-11-01', before_bpm: 70, after_bpm: 100 },
+      { id: '2', date: '2026-11-11', before_bpm: 72, after_bpm: 105 },
+      { id: '3', date: '2026-11-17', before_bpm: 75, after_bpm: 110 },
+      { id: '4', date: '2026-11-18', before_bpm: 75, after_bpm: 110 },
+      null,
+      { id: 'bad' },
+    ];
+    expect(filterHeartRate(null, 7, now)).toEqual([]);
+    expect(filterHeartRate([], 7, now)).toEqual([]);
+    expect(filterHeartRate(points, 7, now).map(p => p.id)).toEqual(['2', '3']);
+    expect(filterHeartRate(points, null, now).map(p => p.id)).toEqual(['1', '2', '3', '4']);
   });
 });

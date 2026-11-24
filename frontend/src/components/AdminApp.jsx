@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { describeError } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { assignmentMaps, isAssigned, parseDoctorForm } from '../lib/admin.js';
-import { chipCounts, filterPatients } from '../lib/filters.js';
+import { chipCounts, filterDoctors, filterPatients, matchesQuery } from '../lib/filters.js';
 import { formatDateTime } from '../lib/format.js';
-import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, ScreenHeading, TabNav } from './common.jsx';
+import { Avatar, ErrorMessage, FilterChips, Icon, LiveBadge, Loading, ScreenHeading, SearchField, TabNav } from './common.jsx';
 import { PatientDetail } from './PatientDetail.jsx';
 
 const REFRESH_MS = 10000;
@@ -62,7 +62,7 @@ function Tile({ icon, label, value, note }) {
   );
 }
 
-function Overview({ overview, onOpenPatient }) {
+function Overview({ overview, onOpenPatient, onAssignPatient }) {
   const { stats } = overview;
   const live = overview.patients.filter(patient => patient.active_session_id);
   const { doctorsByPatient } = assignmentMaps(overview);
@@ -86,11 +86,24 @@ function Overview({ overview, onOpenPatient }) {
       {unassigned.length > 0 && (
         <>
           <h3>Patients without a doctor</h3>
-          <p className="alert alert-warning">
-            <span aria-hidden="true">⚠ </span>
-            {unassigned.length === 1 ? 'One patient has' : `${unassigned.length} patients have`} no doctor. Use the
-            Assignments tab to assign one: {unassigned.map(patient => patient.name).join(', ')}.
-          </p>
+          <div className="alert alert-warning">
+            <p>
+              <span aria-hidden="true">⚠ </span>
+              {unassigned.length === 1 ? 'One patient has' : `${unassigned.length} patients have`} no doctor:{' '}
+              {unassigned.map(patient => patient.name).join(', ')}.
+            </p>
+            <div className="button-row">
+              {unassigned.length === 1 ? (
+                <button type="button" className="button button-small" onClick={() => onAssignPatient(unassigned[0].id)}>
+                  <Icon name="link" />Assign {unassigned[0].name}
+                </button>
+              ) : (
+                <button type="button" className="button button-small" onClick={() => onAssignPatient('')}>
+                  <Icon name="link" />Assign patients
+                </button>
+              )}
+            </div>
+          </div>
         </>
       )}
     </section>
@@ -152,7 +165,7 @@ function AllPatients({ overview, onOpenPatient }) {
         <div className="toolbar">
           <div className="search-field">
             <Icon name="search" />
-            <input id="patient-filter" type="search" autoComplete="off" value={filter} onChange={e => setFilter(e.target.value)} aria-describedby="patient-filter-count" />
+            <input id="patient-filter" type="search" placeholder="Search by name or email" autoComplete="off" value={filter} onChange={e => setFilter(e.target.value)} aria-describedby="patient-filter-count" />
           </div>
           <FilterChips
             label="Show patients"
@@ -179,15 +192,22 @@ function AllPatients({ overview, onOpenPatient }) {
   );
 }
 
-function Assignments({ overview, reload }) {
+function Assignments({ overview, reload, initialPatientId = '', onClearInitialPatient }) {
   const { api } = useAuth();
   const [doctorId, setDoctorId] = useState('');
   const [patientId, setPatientId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [busy, setBusy] = useState('');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const { patientsByDoctor, doctorsByPatient } = assignmentMaps(overview);
   const nameOf = (list, id) => list.find(item => item.id === id)?.name ?? 'this account';
+
+  useEffect(() => {
+    if (!initialPatientId) return;
+    setPatientId(initialPatientId);
+    onClearInitialPatient?.();
+  }, [initialPatientId, onClearInitialPatient]);
 
   async function change(method, staffId, participantId) {
     const key = `${method}:${staffId}:${participantId}`;
@@ -218,6 +238,12 @@ function Assignments({ overview, reload }) {
   }
 
   const unassigned = overview.patients.filter(patient => doctorsByPatient.get(patient.id).length === 0);
+  const matchingDoctors = overview.doctors.filter(doctor => {
+    if (!searchQuery.trim()) return true;
+    const assigned = patientsByDoctor.get(doctor.id) ?? [];
+    return matchesQuery(searchQuery, doctor.name, doctor.email)
+      || assigned.some(patient => matchesQuery(searchQuery, patient.name, patient.email));
+  });
 
   return (
     <section aria-labelledby="assignments-heading">
@@ -258,50 +284,81 @@ function Assignments({ overview, reload }) {
       </div>
       {error && <ErrorMessage error={error} />}
       {unassigned.length > 0 && (
-        <p className="alert alert-warning">
-          <span aria-hidden="true">⚠ </span><strong>No doctor yet:</strong> {unassigned.map(patient => patient.name).join(', ')}.
-        </p>
+        <div className="alert alert-warning">
+          <p><span aria-hidden="true">⚠ </span><strong>No doctor yet:</strong> select a patient to pre-fill the assignment form.</p>
+          <div className="button-row">
+            {unassigned.map(patient => (
+              <button
+                key={patient.id}
+                type="button"
+                className="button button-small"
+                onClick={() => setPatientId(patient.id)}
+              >
+                <Icon name="user" />{patient.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       <h3>Current assignments by doctor</h3>
+      {overview.doctors.length > 0 && (
+        <div className="toolbar">
+          <SearchField
+            id="assignment-search"
+            label="Search doctors or assigned patients"
+            placeholder="Search doctors or assigned patients"
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
+      )}
       {overview.doctors.length === 0 && <p className="empty">There are no doctor accounts yet.</p>}
-      <ul className="list doctor-list">
-        {overview.doctors.map(doctor => {
-          const patients = patientsByDoctor.get(doctor.id) ?? [];
-          return (
-            <li key={doctor.id} className="doctor-group">
-              <div className="person">
-                <Avatar name={doctor.name} />
-                <span className="person-text">
-                  <strong className="block">{doctor.name}</strong>
-                  <span className="hint block">{doctor.email} · {patients.length} patient{patients.length === 1 ? '' : 's'}</span>
-                </span>
-              </div>
-              {patients.length === 0 ? (
-                <p className="hint">No patients assigned.</p>
-              ) : (
-                <ul className="list assignment-list" aria-label={`Patients assigned to ${doctor.name}`}>
-                  {patients.map(patient => {
-                    const key = `DELETE:${doctor.id}:${patient.id}`;
-                    return (
-                      <li key={patient.id} className="list-item">
-                        <span>
-                          <strong className="block">{patient.name}</strong>
-                          <span className="hint block">{patient.email}</span>
-                        </span>
-                        <button type="button" className="button button-quiet" disabled={Boolean(busy)}
-                          onClick={() => change('DELETE', doctor.id, patient.id)}
-                          aria-label={`Unassign ${patient.name} from ${doctor.name}`}>
-                          <Icon name="minus" />{busy === key ? 'Unassigning…' : 'Unassign'}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {overview.doctors.length > 0 && matchingDoctors.length === 0 && (
+        <p className="empty">
+          No doctors or assigned patients match.{' '}
+          <button type="button" className="button button-link" onClick={() => setSearchQuery('')}>Clear search</button>
+        </p>
+      )}
+      {matchingDoctors.length > 0 && (
+        <ul className="list doctor-list">
+          {matchingDoctors.map(doctor => {
+            const patients = patientsByDoctor.get(doctor.id) ?? [];
+            return (
+              <li key={doctor.id} className="doctor-group">
+                <div className="person">
+                  <Avatar name={doctor.name} />
+                  <span className="person-text">
+                    <strong className="block">{doctor.name}</strong>
+                    <span className="hint block">{doctor.email} · {patients.length} patient{patients.length === 1 ? '' : 's'}</span>
+                  </span>
+                </div>
+                {patients.length === 0 ? (
+                  <p className="hint">No patients assigned.</p>
+                ) : (
+                  <ul className="list assignment-list" aria-label={`Patients assigned to ${doctor.name}`}>
+                    {patients.map(patient => {
+                      const key = `DELETE:${doctor.id}:${patient.id}`;
+                      return (
+                        <li key={patient.id} className="list-item">
+                          <span>
+                            <strong className="block">{patient.name}</strong>
+                            <span className="hint block">{patient.email}</span>
+                          </span>
+                          <button type="button" className="button button-quiet" disabled={Boolean(busy)}
+                            onClick={() => change('DELETE', doctor.id, patient.id)}
+                            aria-label={`Unassign ${patient.name} from ${doctor.name}`}>
+                            <Icon name="minus" />{busy === key ? 'Unassigning…' : 'Unassign'}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
@@ -311,12 +368,15 @@ function DoctorAccounts({ overview, reload }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [doctorQuery, setDoctorQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState('');
 
   async function onSubmit(event) {
     event.preventDefault();
+    if (busy) return undefined;
     const parsed = parseDoctorForm({ name, email, password });
     if (parsed.error) return setError(parsed.error);
     setBusy(true);
@@ -328,9 +388,9 @@ function DoctorAccounts({ overview, reload }) {
       setName('');
       setEmail('');
       setPassword('');
+      setShowPassword(false);
       reload();
     } catch (failure) {
-      setPassword('');
       if (failure.status === 409) setError('An account with this email already exists.');
       else if (failure.status !== 401) setError(describeError(failure));
     } finally {
@@ -338,6 +398,11 @@ function DoctorAccounts({ overview, reload }) {
     }
     return undefined;
   }
+
+  const invalidName = Boolean(error && /doctor[’']s name/i.test(error));
+  const invalidEmail = Boolean(error && /email/i.test(error));
+  const invalidPassword = Boolean(error && /password/i.test(error));
+  const matchingDoctors = filterDoctors(overview.doctors, { query: doctorQuery });
 
   return (
     <section aria-labelledby="doctors-heading">
@@ -347,19 +412,57 @@ function DoctorAccounts({ overview, reload }) {
           <legend>Create doctor account</legend>
           <div className="field">
             <label htmlFor="doctor-name">Doctor’s name</label>
-            <input id="doctor-name" type="text" autoComplete="off" maxLength={80} value={name} onChange={e => setName(e.target.value)} />
+            <input
+              id="doctor-name"
+              type="text"
+              autoComplete="off"
+              maxLength={80}
+              value={name}
+              onChange={e => { setName(e.target.value); if (error) setError(''); }}
+              aria-invalid={invalidName ? true : undefined}
+              aria-describedby={invalidName ? 'doctor-form-error' : undefined}
+            />
           </div>
           <div className="field">
             <label htmlFor="doctor-email">Email address</label>
-            <input id="doctor-email" type="email" autoComplete="off" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
+            <input
+              id="doctor-email"
+              type="email"
+              autoComplete="off"
+              maxLength={254}
+              value={email}
+              onChange={e => { setEmail(e.target.value); if (error) setError(''); }}
+              aria-invalid={invalidEmail ? true : undefined}
+              aria-describedby={invalidEmail ? 'doctor-form-error' : undefined}
+            />
           </div>
           <div className="field">
             <label htmlFor="doctor-password">Temporary password</label>
-            <input id="doctor-password" type="password" autoComplete="new-password" maxLength={128} value={password}
-              onChange={e => setPassword(e.target.value)} aria-describedby="doctor-password-hint" />
+            <div className="password-row">
+              <input
+                id="doctor-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                maxLength={128}
+                value={password}
+                onChange={e => { setPassword(e.target.value); if (error) setError(''); }}
+                aria-invalid={invalidPassword ? true : undefined}
+                aria-describedby={invalidPassword ? 'doctor-password-hint doctor-form-error' : 'doctor-password-hint'}
+              />
+              <button
+                type="button"
+                className="button button-small password-toggle"
+                aria-pressed={showPassword}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword(visible => !visible)}
+              >
+                <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+                <span>{showPassword ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
             <p className="hint" id="doctor-password-hint">12 to 128 characters. Give it to the doctor in person, not by email.</p>
           </div>
-          {error && <ErrorMessage error={error} />}
+          {error && <div id="doctor-form-error"><ErrorMessage error={error} /></div>}
           <div aria-live="polite">
             {created && <p className="alert alert-success"><span aria-hidden="true">✓ </span>{created}</p>}
           </div>
@@ -369,11 +472,27 @@ function DoctorAccounts({ overview, reload }) {
         </fieldset>
       </form>
       <h3>Doctors</h3>
+      {overview.doctors.length > 0 && (
+        <div className="toolbar">
+          <SearchField
+            id="doctor-search"
+            label="Search doctors"
+            placeholder="Search doctors by name or email"
+            value={doctorQuery}
+            onChange={setDoctorQuery}
+          />
+        </div>
+      )}
       {overview.doctors.length === 0 ? (
         <p className="empty">There are no doctor accounts yet.</p>
+      ) : matchingDoctors.length === 0 ? (
+        <p className="empty">
+          No doctors match.{' '}
+          <button type="button" className="button button-link" onClick={() => setDoctorQuery('')}>Clear search</button>
+        </p>
       ) : (
         <ul className="list">
-          {overview.doctors.map(doctor => (
+          {matchingDoctors.map(doctor => (
             <li key={doctor.id} className="list-item">
               <span className="person">
                 <Avatar name={doctor.name} />
@@ -398,6 +517,12 @@ export function AdminApp() {
   const { overview, error, reload } = useOverview(api);
   const [view, setView] = useState('overview');
   const [selectedId, setSelectedId] = useState(null);
+  const [quickAssignPatientId, setQuickAssignPatientId] = useState('');
+
+  const openAssign = useCallback((patientId = '') => {
+    setQuickAssignPatientId(patientId);
+    setView('assignments');
+  }, []);
 
   if (selectedId) {
     return (
@@ -422,9 +547,16 @@ export function AdminApp() {
         )}
         {error && !overview && <ErrorMessage error={error} onRetry={reload} />}
         {!overview && !error && <Loading label="Loading the overview…" />}
-        {overview && view === 'overview' && <Overview overview={overview} onOpenPatient={setSelectedId} />}
+        {overview && view === 'overview' && <Overview overview={overview} onOpenPatient={setSelectedId} onAssignPatient={openAssign} />}
         {overview && view === 'patients' && <AllPatients overview={overview} onOpenPatient={setSelectedId} />}
-        {overview && view === 'assignments' && <Assignments overview={overview} reload={reload} />}
+        {overview && view === 'assignments' && (
+          <Assignments
+            overview={overview}
+            reload={reload}
+            initialPatientId={quickAssignPatientId}
+            onClearInitialPatient={() => setQuickAssignPatientId('')}
+          />
+        )}
         {overview && view === 'doctors' && <DoctorAccounts overview={overview} reload={reload} />}
       </div>
     </>

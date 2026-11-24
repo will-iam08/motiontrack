@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { describeError } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { usePagedList } from '../hooks/usePagedList.js';
+import { bpmRangeLabel, EXERCISE_NAMES, hasPlan, prescribedReps, REP_FIELDS } from '../lib/carePlan.js';
 import { csvFilename, downloadCsv, SESSION_CSV_COLUMNS, sessionsToRows, toCsv } from '../lib/exportCsv.js';
 import { formatDateTime } from '../lib/format.js';
 import { ErrorMessage, FilterChips, Icon, Loading, Pager, ScreenHeading, StatusBadge } from './common.jsx';
@@ -30,18 +31,71 @@ function summary(session) {
   return `${total} exercise${total === 1 ? '' : 's'}, ${complete} complete`;
 }
 
+function planPrintSummary(plan) {
+  if (!hasPlan(plan)) return '';
+  const parts = Object.keys(REP_FIELDS)
+    .map(id => {
+      const reps = prescribedReps(plan, id);
+      return reps === null ? null : `${EXERCISE_NAMES[id]}: ${reps} reps`;
+    })
+    .filter(Boolean);
+  const bpm = bpmRangeLabel(plan);
+  if (bpm) parts.push(`Target heart rate: ${bpm}`);
+  return parts.join(' · ');
+}
+
+export function PrintHeader({ printContext, heading, plan }) {
+  if (!printContext) return null;
+  const planSummary = planPrintSummary(plan);
+  return (
+    <div className="print-only print-header">
+      <p className="eyebrow">MotionTrack Clinical Report</p>
+      {printContext.patientName ? (
+        <p>
+          <strong>Patient:</strong> {printContext.patientName}
+          {printContext.patientEmail ? ` (${printContext.patientEmail})` : ''}
+        </p>
+      ) : (
+        heading && <p><strong>{heading}</strong></p>
+      )}
+      <p><strong>Printed:</strong> {formatDateTime(new Date().toISOString())}</p>
+      {planSummary && <p><strong>Care plan:</strong> {planSummary}</p>}
+      {plan?.notes?.trim() && <p><strong>Care notes:</strong> {plan.notes.trim()}</p>}
+    </div>
+  );
+}
+
 // Workout sessions, newest first, each expandable to its exercise table; then
 // the read-only list of earlier timed workouts.
 export function SessionHistory({
-  devices, refreshKey, path = '/api/sessions', timedPath, owner = 'You have', heading = 'History', headingLevel = 2, plan,
+  devices,
+  refreshKey,
+  path = '/api/sessions',
+  timedPath,
+  owner = 'You have',
+  heading = 'History',
+  headingLevel = 2,
+  autoFocusHeading = true,
+  plan,
+  printContext = null,
 }) {
   const { api } = useAuth();
   const [chip, setChip] = useState('all');
   const { data, error, page, setPage, retry } = usePagedList(api, path, STATUS_QUERY[chip], PAGE_SIZE, refreshKey);
   const [expanded, setExpanded] = useState(() => new Set());
+  const [pendingPrint, setPendingPrint] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState('');
   const [exportError, setExportError] = useState('');
+
+  useEffect(() => {
+    if (!pendingPrint) return undefined;
+    const raf = requestAnimationFrame(() => {
+      window.print();
+      setPendingPrint(false);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pendingPrint, expanded]);
 
   function pickChip(next) {
     setChip(next);
@@ -67,7 +121,7 @@ export function SessionHistory({
   // The printed report shows every session on this page with its exercises.
   function printReport() {
     setExpanded(new Set(data?.sessions.map(session => session.id) ?? []));
-    setTimeout(() => window.print(), 0);
+    setPendingPrint(true);
   }
   const sourceText = session => {
     if (session.source === 'app' || !session.device_id) return ' · Motion Log app';
@@ -84,10 +138,14 @@ export function SessionHistory({
     });
   }
 
+  const subHeadingLevel = Math.min(6, headingLevel + 1);
+  const SubHeading = `h${subHeadingLevel}`;
+
   return (
     <section aria-labelledby="history-heading">
-      <div id="history-heading"><ScreenHeading level={headingLevel}>{heading}</ScreenHeading></div>
-      <h3>Workout sessions</h3>
+      <PrintHeader printContext={printContext} heading={heading} plan={plan} />
+      <div id="history-heading"><ScreenHeading level={headingLevel} autoFocus={autoFocusHeading}>{heading}</ScreenHeading></div>
+      <SubHeading>Workout sessions</SubHeading>
       <div className="toolbar">
         <FilterChips
           label="Show sessions"
@@ -160,7 +218,7 @@ export function SessionHistory({
           <Pager data={data} page={page} pageSize={PAGE_SIZE} itemCount={data.sessions.length} onPage={setPage} label="Session pages" />
         </>
       )}
-      <TimedHistory path={timedPath} refreshKey={refreshKey} owner={owner} />
+      <TimedHistory path={timedPath} refreshKey={refreshKey} headingLevel={subHeadingLevel} />
     </section>
   );
 }

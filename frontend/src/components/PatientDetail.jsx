@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth.jsx';
 import { useSession } from '../hooks/useSession.js';
-import { deviceLine, isOpen, isStale, notRespondingText } from '../lib/exerciseStatus.js';
+import { isOpen } from '../lib/exerciseStatus.js';
 import { formatDateTime } from '../lib/format.js';
 import { CarePlanForm } from './CarePlan.jsx';
-import { Avatar, ErrorMessage, Icon, LiveBadge, Loading } from './common.jsx';
-import { SessionHistory } from './SessionHistory.jsx';
+import { Avatar, ErrorMessage, Icon, LiveBadge, Loading, ScreenHeading } from './common.jsx';
+import { LiveWorkoutHud } from './LiveWorkoutHud.jsx';
+import { InboxMessage } from './MessageInbox.jsx';
+import { RepProgress } from './RepProgress.jsx';
+import { PrintHeader, SessionHistory } from './SessionHistory.jsx';
 import { SessionTable } from './SessionTable.jsx';
 
 const RECHECK_MS = 5000;
@@ -25,8 +28,6 @@ function LiveSession({ sessionId, patientName, plan }) {
     return () => clearInterval(timer);
   }, [waiting, reload]);
 
-  const stale = !disconnected && openWorkout && isStale(openWorkout, serverTime);
-
   return (
     <section aria-labelledby="live-heading" className="live-block">
       <h3 id="live-heading">Live session <LiveBadge /></h3>
@@ -42,23 +43,12 @@ function LiveSession({ sessionId, patientName, plan }) {
         <>
           <p className="context-line">Started {formatDateTime(session.created_at)}.</p>
           {openWorkout ? (
-            <>
-              <div className={`sensor-banner ${stale ? 'sensor-stale' : 'sensor-ok'}`}>
-                <Icon name={stale ? 'alert' : 'signal'} />
-                <p className="device-line" aria-live="polite">
-                  <strong>{openWorkout.exercise_name}:</strong> {deviceLine(openWorkout)}
-                </p>
-              </div>
-              <p className="visually-hidden" aria-live="polite">{stale ? 'Device not responding.' : ''}</p>
-              {stale && (
-                <p className="alert alert-warning stale-callout">
-                  <span aria-hidden="true">⚠ </span><strong>{notRespondingText(openWorkout, serverTime)}.</strong>{' '}
-                  {openWorkout.source === 'app'
-                    ? `${patientName}'s Motion Log app has not sent an update recently. Finished sets sync automatically once the phone is back online.`
-                    : `${patientName} may need to check that the device is switched on and connected to Wi-Fi.`}
-                </p>
-              )}
-            </>
+            <LiveWorkoutHud
+              workout={openWorkout}
+              serverTime={serverTime}
+              disconnected={disconnected}
+              perspective="doctor"
+            />
           ) : (
             session.status === 'active' && <p className="idle-text"><Icon name="clock" />No exercise is running at the moment.</p>
           )}
@@ -69,16 +59,90 @@ function LiveSession({ sessionId, patientName, plan }) {
   );
 }
 
+function PatientMessagesPanel({ patient }) {
+  const { api } = useAuth();
+  const [messages, setMessages] = useState(null);
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setError(null);
+    api('/api/doctor/messages', { query: { unread_only: 0 }, signal: controller.signal })
+      .then(data => setMessages((data.messages ?? []).filter(item => item.participant_id === patient.id)))
+      .catch(failure => {
+        if (failure?.name !== 'AbortError' && failure?.status !== 401) setError(failure);
+      });
+    return () => controller.abort();
+  }, [api, patient.id, attempt]);
+
+  const handleChanged = useCallback(updated => {
+    setMessages(previous => previous?.map(item => (item.id === updated.id ? { ...item, ...updated } : item)) ?? previous);
+  }, []);
+
+  return (
+    <section className="detail-section" aria-labelledby="patient-messages-heading">
+      <h3 id="patient-messages-heading">
+        <Icon name="mail" /> Messages with {patient.name}
+        {messages?.length > 0 && ` (${messages.length})`}
+      </h3>
+      {error && <ErrorMessage error={error} onRetry={() => setAttempt(n => n + 1)} />}
+      {!messages && !error && <Loading label="Loading patient messages…" />}
+      {messages?.length === 0 && <p className="empty">No messages from {patient.name} yet.</p>}
+      {messages?.length > 0 && (
+        <ul className="list message-list" aria-label={`Messages from ${patient.name}`}>
+          {messages.map(message => (
+            <InboxMessage key={message.id} message={message} onChanged={handleChanged} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 // One patient's record for a doctor or an admin. Exercise records are read
 // only; the care plan can be edited. `missingText` is shown when the patient
 // is no longer in the list (for a doctor: no longer assigned).
-export function PatientDetail({ patient, listError, onRetry, onBack, missingText = 'This patient is no longer assigned to you.' }) {
+export function PatientDetail({
+  patient,
+  listError,
+  onRetry,
+  onBack,
+  missingText = 'This patient is no longer assigned to you.',
+  showMessages = false,
+}) {
   const [plan, setPlan] = useState(null);
+  const [carePlanDirty, setCarePlanDirty] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+
+  useEffect(() => {
+    if (!carePlanDirty && confirmLeave) setConfirmLeave(false);
+  }, [carePlanDirty, confirmLeave]);
+
+  function handleBack() {
+    if (carePlanDirty) {
+      setConfirmLeave(true);
+      return;
+    }
+    onBack();
+  }
+
   const back = (
-    <div className="context-bar">
-      <button type="button" className="button button-quiet" onClick={onBack}>← All patients</button>
-      {patient && <p>Viewing <strong>{patient.name}</strong> ({patient.email})</p>}
-    </div>
+    <>
+      <div className="context-bar">
+        <button type="button" className="button button-quiet" onClick={handleBack}>← All patients</button>
+        {patient && <p>Viewing <strong>{patient.name}</strong> ({patient.email})</p>}
+      </div>
+      {confirmLeave && (
+        <div className="alert alert-warning" role="alert">
+          <p><strong>You have unsaved care plan changes.</strong> Leave without saving?</p>
+          <div className="button-row">
+            <button type="button" className="button button-danger button-small" onClick={onBack}>Leave without saving</button>
+            <button type="button" className="button button-small" onClick={() => setConfirmLeave(false)}>Stay on page</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 
   if (!patient) {
@@ -99,12 +163,13 @@ export function PatientDetail({ patient, listError, onRetry, onBack, missingText
     <>
       {back}
       <div className="card">
+        <PrintHeader printContext={{ patientName: patient.name, patientEmail: patient.email }} plan={plan} />
         <div className="patient-header">
           <span className="person">
             <Avatar name={patient.name} />
             <span className="person-text">
               <span className="eyebrow block">Patient</span>
-              <strong className="block">{patient.name}</strong>
+              <ScreenHeading level={2}>{patient.name}</ScreenHeading>
               <span className="hint block">{patient.email}</span>
             </span>
           </span>
@@ -120,14 +185,30 @@ export function PatientDetail({ patient, listError, onRetry, onBack, missingText
         {patient.active_session_id && (
           <LiveSession key={patient.active_session_id} sessionId={patient.active_session_id} patientName={patient.name} plan={plan} />
         )}
-        <CarePlanForm key={patient.id} patient={patient} onSaved={setPlan} />
-        <SessionHistory
-          path={`${base}/sessions`}
-          timedPath={`${base}/workouts`}
-          owner="This patient has"
-          heading={`Workouts for ${patient.name}`}
-          plan={plan}
-        />
+        <CarePlanForm key={patient.id} patient={patient} onSaved={setPlan} onDirtyChange={setCarePlanDirty} />
+        <div className="detail-section">
+          <RepProgress
+            key={patient.id}
+            path={`${base}/progress`}
+            plan={plan}
+            heading="Progress & heart rate"
+            headingLevel={3}
+            autoFocusHeading={false}
+          />
+        </div>
+        {showMessages && <PatientMessagesPanel key={patient.id} patient={patient} />}
+        <div className="detail-section">
+          <SessionHistory
+            key={patient.id}
+            path={`${base}/sessions`}
+            timedPath={`${base}/workouts`}
+            owner="This patient has"
+            heading={`Workouts for ${patient.name}`}
+            headingLevel={3}
+            autoFocusHeading={false}
+            plan={plan}
+          />
+        </div>
       </div>
     </>
   );

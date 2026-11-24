@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assignmentMaps } from './admin.js';
-import { chipCounts, filterMessages, filterPatients, filterSessions, matchesQuery, normalizeText } from './filters.js';
+import { chipCounts, filterDoctors, filterMessages, filterPatients, filterSessions, matchesQuery, normalizeText } from './filters.js';
 
 describe('text matching', () => {
   it('normalizes case, spaces and accents', () => {
@@ -55,6 +55,33 @@ describe('patient filters', () => {
   it('handles empty input', () => {
     expect(filterPatients(null)).toEqual([]);
     expect(filterPatients([], { chip: 'live' })).toEqual([]);
+  });
+
+  it('filters by attention, unread, and inactive chips', () => {
+    const now = Date.parse('2026-11-24T12:00:00Z');
+    const patients = [
+      { id: 'a1', name: 'Live User', email: 'a1@x.com', active_session_id: 's1', last_session_at: '2026-11-01T00:00:00Z', incomplete_workouts: 0, out_of_range_bpm_count: 0, unread_messages: 0 },
+      { id: 'a2', name: 'Incomplete User', email: 'a2@x.com', active_session_id: null, last_session_at: '2026-11-23T00:00:00Z', incomplete_workouts: 1, out_of_range_bpm_count: 0, unread_messages: 2 },
+      { id: 'a3', name: 'BPM Alert User', email: 'a3@x.com', active_session_id: null, last_session_at: '2026-11-10T00:00:00Z', incomplete_workouts: 0, out_of_range_bpm_count: 1, unread_messages: 0 },
+      { id: 'a4', name: 'Never Active', email: 'a4@x.com', active_session_id: null, last_session_at: null, incomplete_workouts: 0, out_of_range_bpm_count: 0, unread_messages: 1 },
+    ];
+    expect(ids(filterPatients(patients, { chip: 'attention' }))).toEqual(['a2', 'a3']);
+    expect(ids(filterPatients(patients, { chip: 'unread' }))).toEqual(['a2', 'a4']);
+    expect(ids(filterPatients(patients, { chip: 'inactive', now }))).toEqual(['a3', 'a4']);
+  });
+});
+
+describe('doctor filters', () => {
+  const doctors = [
+    { id: 'd1', name: 'Dr. Priya Rao', email: 'rao@clinic.org' },
+    { id: 'd2', name: 'Dr. Luis Vega', email: 'vega@hospital.net' },
+  ];
+
+  it('filters doctors by name and email', () => {
+    expect(ids(filterDoctors(doctors))).toEqual(['d1', 'd2']);
+    expect(ids(filterDoctors(doctors, { query: 'priya' }))).toEqual(['d1']);
+    expect(ids(filterDoctors(doctors, { query: 'hospital' }))).toEqual(['d2']);
+    expect(filterDoctors(null, { query: 'rao' })).toEqual([]);
   });
 });
 

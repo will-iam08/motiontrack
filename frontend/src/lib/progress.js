@@ -8,10 +8,11 @@ export const RANGES = [
   { value: 'all', label: 'All time', days: null },
 ];
 
-// Rep exercises have no duration, so progress charts these two measures.
+// Rep exercises have no duration, so progress charts these measures.
 export const METRICS = [
   { value: 'workouts', label: 'Completed exercises' },
   { value: 'repetitions', label: 'Repetitions' },
+  { value: 'duration_seconds', label: 'Active time' },
 ];
 
 const DAY_MS = 86400000;
@@ -32,6 +33,14 @@ export function filterDaily(daily, days, now = Date.now()) {
   const start = rangeStart(days, now);
   const end = utcDateKey(now);
   return start ? daily.filter(row => row.date >= start && row.date <= end) : daily;
+}
+
+export function filterHeartRate(points, days, now = Date.now()) {
+  if (!Array.isArray(points) || points.length === 0) return [];
+  const valid = points.filter(point => point && typeof point.date === 'string' && point.date.length >= 10);
+  const start = rangeStart(days, now);
+  const end = utcDateKey(now);
+  return start ? valid.filter(point => point.date >= start && point.date <= end) : valid;
 }
 
 export function sumRows(rows) {

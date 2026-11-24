@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth.jsx';
 import { ErrorMessage, TabNav } from './common.jsx';
 import { PatientDashboard } from './PatientDashboard.jsx';
@@ -6,25 +6,21 @@ import { PatientMessages } from './PatientMessages.jsx';
 import { RepProgress } from './RepProgress.jsx';
 import { SessionHistory } from './SessionHistory.jsx';
 
-const VIEWS = [
-  { id: 'dashboard', label: 'Overview', icon: 'pulse' },
-  { id: 'history', label: 'History', icon: 'history' },
-  { id: 'progress', label: 'Progress', icon: 'chart' },
-  { id: 'messages', label: 'Messages', icon: 'mail' },
-];
-
 export function PatientApp() {
-  const { api } = useAuth();
+  const { api, user } = useAuth();
   const [view, setView] = useState('dashboard');
   const [plan, setPlan] = useState(null);
   const [planError, setPlanError] = useState(null);
   const [planAttempt, setPlanAttempt] = useState(0);
   const [progress, setProgress] = useState(null);
   const [progressError, setProgressError] = useState(null);
-  const [recentSessions, setRecentSessions] = useState([]);
+  const [recentSessions, setRecentSessions] = useState(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [sessionsError, setSessionsError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [messagesSummary, setMessagesSummary] = useState([]);
+  const [seenRepliesAt, setSeenRepliesAt] = useState(null);
+  const [overviewTick, setOverviewTick] = useState(0);
+  const [tabTick, setTabTick] = useState(0);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const loadPlan = useCallback(() => {
@@ -36,7 +32,7 @@ export function PatientApp() {
     return () => controller.abort();
   }, [api]);
 
-  useEffect(() => loadPlan(), [loadPlan, planAttempt, refreshKey]);
+  useEffect(() => loadPlan(), [loadPlan, planAttempt, overviewTick]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -47,7 +43,7 @@ export function PatientApp() {
         if (failure?.name !== 'AbortError' && failure?.status !== 401) setProgressError(failure);
       });
     return () => controller.abort();
-  }, [api, refreshKey]);
+  }, [api, overviewTick]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,22 +57,67 @@ export function PatientApp() {
         if (failure?.name !== 'AbortError' && failure?.status !== 401) setSessionsError(failure);
       });
     return () => controller.abort();
-  }, [api, refreshKey]);
+  }, [api, overviewTick]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api('/api/messages', { signal: controller.signal })
+      .then(data => setMessagesSummary(data.messages ?? []))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [api, overviewTick]);
+
+  const latestReplyAt = useMemo(() => (
+    messagesSummary.reduce((latest, item) => {
+      if (!item.doctor_reply || !item.replied_at) return latest;
+      return !latest || item.replied_at > latest ? item.replied_at : latest;
+    }, '')
+  ), [messagesSummary]);
+
+  const newReplies = useMemo(() => (
+    messagesSummary.filter(item => (
+      Boolean(item.doctor_reply)
+      && (!seenRepliesAt || (item.replied_at && item.replied_at > seenRepliesAt))
+    )).length
+  ), [messagesSummary, seenRepliesAt]);
+
+  useEffect(() => {
+    if (view === 'messages' && latestReplyAt && (!seenRepliesAt || latestReplyAt > seenRepliesAt)) {
+      setSeenRepliesAt(latestReplyAt);
+    }
+  }, [view, latestReplyAt, seenRepliesAt]);
 
   function reloadDashboard() {
-    setRefreshKey(n => n + 1);
+    setOverviewTick(n => n + 1);
   }
 
   function changeView(next) {
     setView(next);
-    if (next === 'dashboard' || next === 'history' || next === 'progress') {
-      setRefreshKey(n => n + 1);
+    if (next === 'dashboard') {
+      setOverviewTick(n => n + 1);
+    } else if (next === 'history' || next === 'progress') {
+      setTabTick(n => n + 1);
+    } else if (next === 'messages') {
+      setSeenRepliesAt(latestReplyAt || new Date().toISOString());
     }
   }
 
+  const views = [
+    { id: 'dashboard', label: 'Overview', icon: 'pulse' },
+    { id: 'history', label: 'History', icon: 'history' },
+    { id: 'progress', label: 'Progress', icon: 'chart' },
+    {
+      id: 'messages',
+      label: 'Messages',
+      icon: 'mail',
+      badge: newReplies,
+      badgeLabel: newReplies === 1 ? '1 doctor reply' : `${newReplies} doctor replies`,
+    },
+  ];
+
   return (
     <>
-      <TabNav views={VIEWS} current={view} onChange={changeView} label="Patient sections" />
+      <TabNav views={views} current={view} onChange={changeView} label="Patient sections" />
       <div className="card">
         {planError && view !== 'dashboard' && <ErrorMessage error={planError} onRetry={() => setPlanAttempt(n => n + 1)} />}
         {view === 'dashboard' && (
@@ -97,8 +138,14 @@ export function PatientApp() {
             onOpenTab={changeView}
           />
         )}
-        {view === 'history' && <SessionHistory refreshKey={refreshKey} plan={plan} />}
-        {view === 'progress' && <RepProgress refreshKey={refreshKey} />}
+        {view === 'history' && (
+          <SessionHistory
+            refreshKey={tabTick}
+            plan={plan}
+            printContext={{ patientName: user?.name, patientEmail: user?.email, plan }}
+          />
+        )}
+        {view === 'progress' && <RepProgress refreshKey={tabTick} plan={plan} />}
         {view === 'messages' && <PatientMessages />}
       </div>
     </>
