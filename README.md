@@ -55,7 +55,7 @@ To try it locally, open [`/#interactive-demo`](http://localhost:5173/#interactiv
 **Motion Track** syncs the following information for each set to the review dashboard:
 1. **Exercise type** (`Biceps curl / Arm Curl`, `Shoulder press`, `Back row`, 1–50 target reps)
 2. **Completed repetitions** (counted live on an on-device OLED)
-3. **Elapsed time + before/after heart rate (BPM)** measured via the **Motion Track** iOS camera pulse estimator or pulse sensor
+3. **Elapsed time + before/after heart rate (BPM)** measured via the **MotionTrack** iOS camera pulse estimator or pulse sensor
 
 An exercise record is marked **Complete** only when all target reps finish and both heart-rate readings exist (otherwise **Incomplete**). Retried HTTPS uploads from the phone are idempotent (`client_id`) and never double-count. The web app exposes **Patient** (`/`), **Doctor** (`/doctor`), and **Admin** (`/admin`) views (mapped to `participant`, `staff`, and `admin` in the backend API, CLI, and database).
 
@@ -93,15 +93,15 @@ For all three exercises, strap the `MPU6050` snugly **just above the wrist** of 
   <img src="./docs/assets/software-architecture.png" alt="Motion Track software data flow from ESP32 BLE calibration and rep counting to Motion Track HTTPS sync, Express API, and React dashboard" width="820" />
 </div>
 
-### Motion Track iPhone Companion & Camera Pulse Check
+### MotionTrack iPhone Companion & Camera Pulse Check
 
 <p align="center">
-  <img src="./docs/assets/mobile-pulse.png" alt="Motion Track SwiftUI iPhone app measuring fingertip camera PPG pulse before workout" width="520" />
+  <img src="./docs/assets/mobile-pulse.png" alt="MotionTrack SwiftUI iPhone app measuring fingertip camera PPG pulse before workout" width="520" />
 </p>
 
 - **Bluetooth Workout Session (`mobile/MotionTrack/`):** Calibrates the forearm sensor while resting, selects an exercise & rep target, mirrors live counts over BLE, and lets users finish early without losing completed reps.
 - **Camera PPG Pulse Estimation:** Measures fingertip pulse waveform before and after sets (supporting front-camera + screen light on iPhone 17 Pro / Pro Max, or rear lens; see [`mobile/README.md#iphone-camera-pulse`](mobile/README.md#iphone-camera-pulse)).
-- **Offline Sync Queue + Dual Storage Backend:** `Motion Track` queues completed sets offline and retries idempotently over HTTPS to the Node + Express backend, storing records in local SQLite (`backend/data/ece198.sqlite`) or hosted Turso libSQL (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
+- **Offline Sync Queue + Dual Storage Backend:** `MotionTrack` queues completed sets offline and retries idempotently over HTTPS to the Node + Express backend, storing records in local SQLite (`backend/data/ece198.sqlite`) or hosted Turso libSQL (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
 - **Legacy Wi-Fi Compatibility:** Direct ESP32-to-server Wi-Fi sketches under [`firmware/`](firmware/README.md) remain intact to preserve legacy device records alongside the unified Bluetooth + iPhone architecture in [`mobile/Firmware/`](mobile/setup-guide.md).
 
 ### Repository Layout

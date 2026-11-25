@@ -1,4 +1,4 @@
-# Motion Track wiring and setup guide
+# MotionTrack wiring and setup guide
 
 This guide covers the classic USB-C ESP32 DOIT DevKit V1 with 4 MB of flash, an MPU6050 motion sensor, a MAX30102 heart-rate sensor and a 128 × 64 SSD1306 OLED. In the default Bluetooth Low Energy (BLE) mode, the iPhone sends workout commands and the ESP32 returns sensor readings. Powering the board starts Bluetooth advertising. You can connect without a network account, a device token or a serial command.
 

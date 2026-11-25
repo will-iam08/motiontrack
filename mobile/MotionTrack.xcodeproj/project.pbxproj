@@ -214,7 +214,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Estimate your pulse from your fingertip before and after exercise.";
-				INFOPLIST_KEY_CFBundleDisplayName = "Motion Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "MotionTrack";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your exercise tracker to display repetitions and workout duration.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -236,7 +236,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Estimate your pulse from your fingertip before and after exercise.";
-				INFOPLIST_KEY_CFBundleDisplayName = "Motion Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "MotionTrack";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect to your exercise tracker to display repetitions and workout duration.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

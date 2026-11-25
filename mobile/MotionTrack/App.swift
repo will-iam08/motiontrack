@@ -116,7 +116,7 @@ struct Dashboard: View {
                 }.padding(.horizontal, 20).padding(.vertical, 12)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Motion Track")
+            .navigationTitle("MotionTrack")
             .sheet(isPresented: $showingAccount) {
                 AccountSheet(cloudSync: cloudSync)
             }
