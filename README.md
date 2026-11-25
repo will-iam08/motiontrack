@@ -1,29 +1,41 @@
 <div align="center">
 
-<img src="./docs/assets/icon.png" alt="Motion Track Icon" width="88" height="88" />
+<img src="./docs/assets/icon.png" alt="Motion Track Icon" width="96" height="96" />
 
-# Motion Track
+# MotionTrack
 
-**A forearm wearable, iPhone app, and clinical dashboard that record exercise reps, duration, and heart-rate check-ins in clinic and at home.**
+**Connected exercise tracking for clinic and at-home care.**
 
-<sub>University of Waterloo · ECE 198 · Group 65 · Built for the CCCARE exercise-tracking brief</sub>
+<sub>A forearm wearable, iPhone companion, and clinical dashboard for exercise reps, duration, and heart-rate check-ins.</sub>
+
+<p>
+  <a href="#web-demo">Watch the walkthrough</a> ·
+  <a href="#system-architecture">Explore the system</a> ·
+  <a href="#quick-start">Run it locally</a>
+</p>
 
 <p>
   <img src="https://img.shields.io/badge/UWaterloo-ECE%20198%20%C2%B7%20Group%2065-0e4a43" alt="University of Waterloo ECE 198 Group 65" />
   <img src="https://img.shields.io/badge/Hardware-ESP32%20%C2%B7%20MPU6050%20%C2%B7%20OLED-1d4ed8" alt="ESP32 MPU6050 OLED" />
   <img src="https://img.shields.io/badge/Mobile-iOS%20%C2%B7%20SwiftUI%20%C2%B7%20BLE-111827" alt="iOS SwiftUI BLE" />
-  <img src="https://img.shields.io/badge/Web%20App-React%2019%20%C2%B7%20Express%205%20%C2%B7%20SQLite%20%2F%20Turso-0f766e" alt="React 19 Express 5 SQLite Turso" />
+  <img src="https://img.shields.io/badge/Platform-React%20%2B%20Express%20%2B%20SQLite%20%2F%20Turso-0f766e" alt="React, Express, SQLite and Turso" />
 </p>
-
-[Problem](#problem-we-are-solving) · [Web Demo](#web-demo) · [Overview](#overview) · [Hardware & Rep Detection](#hardware--rep-detection) · [System Architecture](#system-architecture) · [Test Results](#wearable--software-test-results) · [Web Portals](#web-portals) · [Quick Start](#quick-start) · [Team & Credits](#team--credits)
 
 <p>
-  <img src="./docs/assets/wearable-hero.png" alt="Motion Track forearm wearable enclosure CAD model with OLED rep counter" width="780" />
+  <img src="./docs/assets/wearable-hero.png" alt="Motion Track forearm wearable enclosure CAD model with OLED rep counter" width="760" />
 </p>
 
-<sup><em>Group 65 "Diamond Ends" Fusion CAD forearm enclosure (OLED readout illustrative).</em></sup>
+<sup><em>Forearm enclosure designed by Group 65; OLED readout is illustrative.</em></sup>
 
 </div>
+
+---
+
+## The system at a glance
+
+| **Wearable** | **iPhone companion** | **Care dashboard** |
+| :--- | :--- | :--- |
+| ESP32 and motion sensor count supported exercises on-device and show live progress on an OLED. | SwiftUI app connects over Bluetooth, captures pulse check-ins, and syncs workouts when online. | Patient, doctor, and admin portals review workouts, care plans, and progress. |
 
 ---
 
